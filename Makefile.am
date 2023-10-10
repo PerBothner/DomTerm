@@ -99,12 +99,11 @@ man1_MANS += share/man/man1/qtdomterm.1
 endif
 
 NODE_MODULES_PARENT = .
-#NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
+NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
 #XTERMJS_ADDONS_ROOT = $(NODE_MODULES_PARENT)/node_modules
-NODE_MODULES_DIR = xtermjs/addons
 XTERMJS_ROOT = @XTERMJS_PATH@
 XTERMJS_ADDONS_ROOT = $(XTERMJS_ROOT)/addons
-XTERMJS_ADDONS = canvas fit image serialize web-links webgl
+XTERMJS_ADDONS = canvas fit serialize web-links webgl
 NPM = npm
 
 ADOC_GENERATED = \
@@ -356,10 +355,14 @@ recompile-sixel:
 	rm hlib/sixel/Types.js
 
 if WITH_XTERMJS
+if XTERMJS_FROM_NPM
+DOMTERM_JAR_EXTRA_DEPS = $(NODE_MODULES_DIR)/xterm/lib/xterm.js
+else
 if ENABLE_DEBUG
 DOMTERM_JAR_EXTRA_DEPS = tmp-xterm-debug-built
 else
 DOMTERM_JAR_EXTRA_DEPS = tmp-xterm-built
+endif
 endif
 endif
 
@@ -367,6 +370,12 @@ $(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR) $(DOMTERM_JAR_EXTRA_DEPS)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_XTERMJS
+if XTERMJS_FROM_NPM
+	cp $(NODE_MODULES_DIR)/xterm/lib/xterm.js tmp-for-jar/hlib
+	for ADDON in $(XTERMJS_ADDONS); do \
+	  cp $(NODE_MODULES_DIR)/xterm-addon-$$ADDON/lib/xterm-addon-$$ADDON.js tmp-for-jar/hlib; done
+	cp $(NODE_MODULES_DIR)/xterm/css/xterm.css tmp-for-jar/hlib
+else
 if ENABLE_DEBUG
 	cp $(XTERMJS_ROOT)/debug-lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
@@ -374,9 +383,10 @@ if ENABLE_DEBUG
 else
 	cp $(XTERMJS_ROOT)/lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ADDONS_ROOT)/xterm-addon-$$ADDON/lib/xterm-addon-$$ADDON.js; done
+	  cp $(XTERMJS_ADDONS_ROOT)/xterm-addon-$$ADDON/lib/xterm-addon-$$ADDON.js tmp-for-jar/hlib; done
 endif
 	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib
+endif
 endif
 if WITH_JAVA
 	cd tmp-for-jar && \

@@ -302,6 +302,13 @@ fi
 AM_CONDITIONAL(WITH_XTERMJS,
     test "$with_xterm_js" != "" -a "$with_xterm_js" != "no")
 XTERMJS_PATH="$with_xterm_js"
+case "$with_xterm_js" in
+  ""|"no") WITH_XTERMJS=0;;
+  "yes"|"npm" ) WITH_XTERMJS=1 ;;
+  "git-clone") WITH_XTERMJS=1; XTERMJS_PATH=xtermjs;;
+  *) WITH_XTERMJS=1;;
+esac
+AM_CONDITIONAL(XTERMJS_FROM_NPM, test "$with_xterm_js" = "yes" -o "$with_xterm_js" = "npm")
 
 dnl Files for "inner" JavaScript context
 HLIB_FIXED_FILES_INNER="\
@@ -351,13 +358,6 @@ HLIB_FIXED_FILES_MISC="\
   hlib/macos-traffic-lights.css \
   hlib/xterminal.js \
   hlib/jsMenus.css"
-case "$with_xterm_js" in
-  ""|"no")
-    WITH_XTERMJS=0;;
-  "yes")
-    WITH_XTERMJS=1; XTERMJS_PATH=xtermjs;;
-  *) WITH_XTERMJS=1;;
-esac
 AC_SUBST(XTERMJS_PATH)
 AC_SUBST(WITH_XTERMJS)
 AC_SUBST(HLIB_FIXED_FILES_INNER)

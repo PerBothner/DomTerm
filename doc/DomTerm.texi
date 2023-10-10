@@ -83,6 +83,11 @@ and @uref{https://lists.domterm.org/pipermail/domterm-discuss-domterm.org/,archi
 @emph{}@image{images/domterm-1}
 @itemize
 @item
+An @ref{xtermjs,experimental option} to use @uref{https://xtermjs.org/,xterm.js} for the JavaScript ``guts'' of the terminal emulator.
+This is quite a bit faster than the default implementation,
+but is missing a number of features.  The plan is to add those features,
+and use @code{xterm.js} by default later.
+@item
 @uref{https://en.wikipedia.org/wiki/Sixel,@strong{Sixel graphics}} is now supported.
 @item
 The @code{domterm} command takes multiple sub-commands,
@@ -101,13 +106,6 @@ We now support draggable tabs and panes.
 @item
 An experimental @ref{Paging,pager} with optional
 automatic pause on each page.
-@item
-The preferred ``backend` is now @uref{https://libwebsockets.org/,libwebsockets}.
-This is light-weight, does not require Java, is actively maintained,
-and enables serving http and the WebSockets on the same port.
-@item
-Support for CJK (Chinese, Japanese, and Korean) characters is improved:
-Double-width characters now really are two columns wide.
 @end itemize
 
 @menu
@@ -913,15 +911,22 @@ then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR}.
 Use DocBook for generating HTML documentation.
 This used to be the default but is no longer recommended with texinfo 6.8.
 
-@item --with-xterm.js
+@item --with-xterm.js[=npm]
+@itemx --with-xterm.js=git-clone
+@itemx --with-xterm.js=@var{path}
 Build experimental support for using the @uref{https://xtermjs.org/,xterm.js}
 terminal emulator in addition to the DomTerm emulator.
 The main advantage of xterm.js is that it is very fast;
 however, it is missing many of the features of DomTerm.
 @ref{xtermjs,See here} for more information.
 
-This option clones xterm.js @uref{https://github.com/xtermjs/xterm.js/,from GitHub} into
-a @code{xtermjs} subdirectory, and builds it there.
+If the value of the option is @code{npm} or unspecified,
+then the latest @code{xterm.js} release is downloaded by the @code{npm} command.
+If @code{git-clone} is specified, then the @code{xtermjs}
+source code checked out (cloned)
+@uref{https://github.com/xtermjs/xterm.js/,from GitHub}
+into a @code{xtermjs} subdirectory, and built there.
+Specifying a @var{path} uses an existing checked-out tree.
 
 @item --enable-debug
 Build for development and better debugging.
@@ -5139,6 +5144,7 @@ You can have a mix of terminals, some with @code{xtermjs=false}
 and some with @code{xtermjs=true}.
 
 The main advantage of using xterm.js is that it is very fast.
+Even faster if you specify @code{xtermjs=webgl}.
 You still benefit from many DomTerm features,
 including window managemenet with tabs and files;
 session management; a nice way to connect to remote computers; and more.
