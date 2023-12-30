@@ -103,7 +103,7 @@ NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
 #XTERMJS_ADDONS_ROOT = $(NODE_MODULES_PARENT)/node_modules
 XTERMJS_ROOT = @XTERMJS_PATH@
 XTERMJS_ADDONS_ROOT = $(XTERMJS_ROOT)/addons
-XTERMJS_ADDONS = canvas fit serialize web-links webgl
+XTERMJS_ADDONS = canvas fit image serialize unicode-graphemes web-links webgl
 NPM = npm
 
 ADOC_GENERATED = \
@@ -379,11 +379,11 @@ else
 if ENABLE_DEBUG
 	cp $(XTERMJS_ROOT)/debug-lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ROOT)/debug-lib/xterm-addon-$$ADDON.js tmp-for-jar/hlib; done
+	  cp $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
 else
 	cp $(XTERMJS_ROOT)/lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ADDONS_ROOT)/xterm-addon-$$ADDON/lib/xterm-addon-$$ADDON.js tmp-for-jar/hlib; done
+	  cp $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
 endif
 	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib
 endif
@@ -729,20 +729,11 @@ xtermjs:
 tmp-xterm-built: $(XTERMJS_ROOT)
 	cd $(XTERMJS_ROOT) && yarn && npm run package
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  (cd $(XTERMJS_ROOT)/addons/xterm-addon-$$ADDON && npm run package); done
+	  (cd $(XTERMJS_ROOT)/addons/addon-$$ADDON && npm run package); done
 	touch tmp-xterm-built
 
 tmp-xterm-debug-built: tmp-xterm-built
 	cd $(XTERMJS_ROOT) && node_modules/.bin/webpack --config webpack.config.js --mode development -o debug-lib
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  (cd $(XTERMJS_ROOT)/addons/xterm-addon-$$ADDON && ../../node_modules/.bin/webpack --config webpack.config.js --mode development -o ../../debug-lib); done
+	  (cd $(XTERMJS_ROOT)/addons/addon-$$ADDON && ../../node_modules/.bin/webpack --config webpack.config.js --mode development -o ../../debug-lib); done
 	touch tmp-xterm-debug-built
-
-xtermjs/addons/xterm-addon-image:
-	cd xtermjs/addons && git clone --branch master https://github.com/jerch/xterm-addon-image
-
-setup-xterm-addon-image.stamp: $(XTERMJS_ROOT)/addons/xterm-addon-image
-	cd $(XTERMJS_ROOT) && cp -avx addons/xterm-addon-image/overwrite/* .
-	cd $(XTERMJS_ROOT) && mv demo/client.ts_copy demo/client.ts
-	cd $(XTERMJS_ROOT) && cp -avx addons/xterm-addon-image/overwrite/.eslintrc.json .
-	touch setup-xterm-addon-image.stamp

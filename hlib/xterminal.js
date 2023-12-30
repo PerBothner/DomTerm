@@ -4,7 +4,8 @@ import * as DtUtil from './domterm-utils.js';
 const XTerm = window.Terminal;
 const CanvasAddon = window.CanvasAddon.CanvasAddon;
 const FitAddon = window.FitAddon.FitAddon;
-//const ImageAddon = window.ImageAddon.ImageAddon;
+const UnicodeProvider = window.UnicodeGraphemesAddon.UnicodeGraphemesAddon;
+const ImageAddon = window.ImageAddon.ImageAddon;
 //The following doesn't work - see https://github.com/xtermjs/xterm.js/issues/4424
 //const SerializeAddon = SerializeAddon.SerializeAddon;
 const WebglAddon = window.WebglAddon.WebglAddon;
@@ -27,7 +28,8 @@ class XTermPane extends DTerminal {
         super(windowNumber, "xterminal");
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon.SerializeAddon();
-        //this.imageAddon = new ImageAddon(imageCustomSettings);
+        this.unicodeProvider = new UnicodeProvider();
+        this.imageAddon = new ImageAddon(imageCustomSettings);
     }
     initializeTerminal(_topNode) {
         this.rendererType = DTerminal.defaultXtRendererType;
@@ -49,6 +51,7 @@ class XTermPane extends DTerminal {
         };
         xterm.options.linkHandler = linkHandler;
         xterm.options.scrollback = Infinity;
+        xterm.options.allowProposedApi = true;
 
         xterm.attachCustomKeyEventHandler((e) => {
             if (e.type == 'keypress')
@@ -156,6 +159,7 @@ class XTermPane extends DTerminal {
         //xterm.loadAddon(this.imageAddon);
         xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
+        xterm.loadAddon(this.unicodeProvider);
         this.attachResizeSensor();
         this.setRendererType(this.rendererType);
     }
