@@ -203,6 +203,8 @@ domterm|xterm-domterm|DomTerm terminal emulator,
         kUP=\E[1;2A, kUP3=\E[1;3A, kUP4=\E[1;4A, kUP5=\E[1;5A, kUP6=\E[1;6A, kUP7=\E[1;7A,
         ka2=\EOx, kb1=\EOt, kb3=\EOv, kc2=\EOr,	kp5=\EOE,
         kpADD=\EOk, kpCMA=\EOl,	kpDIV=\EOo, kpDOT=\EOn,	kpMUL=\EOj, kpSUB=\EOm,	kpZRO=\EOp,
+# Disable/Enable bracketed paste; Start/End pasted text (ncurses 20221224)
+        BD=\E[?2004l, BE=\E[?2004h, PE=\E[201~, PS=\E[200~,
 #
 # The following not (yet) implemented but defined by xterm-256 color:
 # Print/MC (media copy): mc0 mc4 mc5
