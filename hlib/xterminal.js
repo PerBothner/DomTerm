@@ -156,7 +156,7 @@ class XTermPane extends DTerminal {
         });
 
         xterm.loadAddon(this.fitAddon);
-        //xterm.loadAddon(this.imageAddon);
+        xterm.loadAddon(this.imageAddon);
         xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
         xterm.loadAddon(this.unicodeProvider);
