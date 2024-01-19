@@ -2666,7 +2666,7 @@ titlebar (on other platforms the custom titlebar is additional).
 The @var{mode} can be @code{system} to use the system
 titlebar, or @code{domterm} to use a custom titlebar (in HTML).
 Further options and customization is planned for later.
-The default on Electron, Wry, and Qt is @code{domterm},
+The default on Electron and Qt is @code{domterm},
 and @code{system} otherwise.
 
 @indsetting{subwindows}

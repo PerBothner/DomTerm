@@ -337,7 +337,7 @@ function loadHandler(event) {
         DomTerm.logToServer = m;
     m = params.get('titlebar');
     if (m !== "system"
-        && (m || DomTerm.isElectron() || DomTerm.usingQtWebEngine || DomTerm.versions.wry)) {
+        && (m || DomTerm.isElectron() || DomTerm.usingQtWebEngine)) {
         DomTerm.addTitlebar = true;
     }
     const useXtermJs = params.get("terminal") === "xtermjs";

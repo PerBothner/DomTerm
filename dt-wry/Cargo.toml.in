@@ -2,11 +2,12 @@
 [package]
 name = "dt-wry"
 version = "@DOMTERM_VERSION@"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 regex = "1.5"
 image = "0.24.5"
 serde_json = "1.0"
 #wry = { git = "https://github.com/tauri-apps/wry.git", branch = "dev" }
-wry = { @WRY_DEPENDENCY@, default-features = false }
+wry = { @WRY_DEPENDENCY@ }
+tao = { @TAO_DEPENDENCY@ }

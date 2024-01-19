@@ -115,13 +115,15 @@ AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
 case "${with_wry}" in
-  "yes" | "") WRY_DEPENDENCY=' version = "0.29.0"' ;;
+  "yes" | "") WRY_DEPENDENCY=' version = "0.35.0"' ;;
   "no") WRY_DEPENDENCY='' ;;
   "/"* | [.]*) WRY_DEPENDENCY=" path = \"${with_wry}\"" ;;
   *) WRY_DEPENDENCY="${with_wry}" ;;
 esac
 AM_CONDITIONAL(WITH_WRY, test -n "$WRY_DEPENDENCY")
 AC_SUBST(WRY_DEPENDENCY)
+TAO_DEPENDENCY=' version = "0.24"'
+AC_SUBST(TAO_DEPENDENCY)
 
 AM_CONDITIONAL(WITH_LIBWEBSOCKETS, test "$with_libwebsockets" != "no")
 AM_CONDITIONAL(WITH_LIBCLIPBOARD, test "$with_libclipboard" != "no" -a "$with_libclipboard" != "")
