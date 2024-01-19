@@ -195,6 +195,8 @@ chrome_command(bool app_mode, struct options *options)
         char *pbin = find_in_path("chrome");
         if (pbin == NULL)
             pbin = find_in_path("google-chrome");
+        if (pbin == NULL)
+            pbin = find_in_path("chromium");
         if (pbin != NULL) {
             chrome_cmd = maybe_quote_arg(pbin);
             free_needed = chrome_cmd != pbin;
