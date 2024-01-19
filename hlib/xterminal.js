@@ -258,6 +258,10 @@ class XTermPane extends DTerminal {
 
     updateSelectionColor(foreground, background, inactive, context) {
         const theme = this.updateThemeLater(context);
+        if (! foreground && ! background && ! inactive) {
+            foreground = '#ffffff';
+            background = inactive = '#4040ff';
+        }
         theme.selectionForeground = foreground;
         theme.selectionBackground = background;
         theme.selectionInactiveBackground = inactive;
