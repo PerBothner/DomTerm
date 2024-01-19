@@ -306,11 +306,11 @@ AM_CONDITIONAL(WITH_XTERMJS,
 XTERMJS_PATH="$with_xterm_js"
 case "$with_xterm_js" in
   ""|"no") WITH_XTERMJS=0;;
-  "yes"|"npm" ) WITH_XTERMJS=1 ;;
-  "git-clone") WITH_XTERMJS=1; XTERMJS_PATH=xtermjs;;
+  "npm" ) WITH_XTERMJS=1 ;;
+  "yes"|"git-clone") WITH_XTERMJS=1; XTERMJS_PATH=xtermjs;;
   *) WITH_XTERMJS=1;;
 esac
-AM_CONDITIONAL(XTERMJS_FROM_NPM, test "$with_xterm_js" = "yes" -o "$with_xterm_js" = "npm")
+AM_CONDITIONAL(XTERMJS_FROM_NPM, test "$with_xterm_js" = "npm")
 
 dnl Files for "inner" JavaScript context
 HLIB_FIXED_FILES_INNER="\

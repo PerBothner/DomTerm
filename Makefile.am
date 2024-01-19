@@ -727,7 +727,7 @@ xtermjs:
 	git clone git@github.com:xtermjs/xterm.js.git xtermjs
 
 tmp-xterm-built: $(XTERMJS_ROOT)
-	cd $(XTERMJS_ROOT) && yarn && npm run package
+	cd $(XTERMJS_ROOT) && yarn setup && yarn && npm run package
 	for ADDON in $(XTERMJS_ADDONS); do \
 	  (cd $(XTERMJS_ROOT)/addons/addon-$$ADDON && npm run package); done
 	touch tmp-xterm-built

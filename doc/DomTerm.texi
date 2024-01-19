@@ -911,8 +911,8 @@ then @var{libclipboard_dir} should be @code{$LIBCLIPBOARD_DIR}.
 Use DocBook for generating HTML documentation.
 This used to be the default but is no longer recommended with texinfo 6.8.
 
-@item --with-xterm.js[=npm]
-@itemx --with-xterm.js=git-clone
+@item --with-xterm.js[=git-clone]
+@itemx --with-xterm.js=npm
 @itemx --with-xterm.js=@var{path}
 Build experimental support for using the @uref{https://xtermjs.org/,xterm.js}
 terminal emulator in addition to the DomTerm emulator.
@@ -920,12 +920,12 @@ The main advantage of xterm.js is that it is very fast;
 however, it is missing many of the features of DomTerm.
 @ref{xtermjs,See here} for more information.
 
-If the value of the option is @code{npm} or unspecified,
-then the latest @code{xterm.js} release is downloaded by the @code{npm} command.
-If @code{git-clone} is specified, then the @code{xtermjs}
-source code checked out (cloned)
+If the value of the option is @code{git-clone} or unspecified,
+then the @code{xtermjs} source code checked out (cloned)
 @uref{https://github.com/xtermjs/xterm.js/,from GitHub}
 into a @code{xtermjs} subdirectory, and built there.
+If the value of the option is @code{npm},
+then the latest @code{xterm.js} release is downloaded by the @code{npm} command.
 Specifying a @var{path} uses an existing checked-out tree.
 
 @item --enable-debug
