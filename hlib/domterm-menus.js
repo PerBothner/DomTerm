@@ -8,7 +8,7 @@ DomTerm.createMenus = function(options) {
         platform = "electron";
     else if (DomTerm.usingQtWebEngine)
         platform = "qt";
-else
+    else
         return;
     let menuItem = DomTerm.makeMenuItem;
     let isElectron = DomTerm.isElectron();

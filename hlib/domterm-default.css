@@ -250,10 +250,6 @@ span.url { font-family: sans-serif; font-size: inherit }
 body[reverse-video] .dt-titlebar-button:hover, body[reverse-video] .dt-titlebar .menu-item:hover {
     background-color: #4040a0;
 }
-.dt-titlebar .menubar,
-body[reverse-video] .nwjs-menu.menubar
-{ background-color: inherit }
-
 .dt-popup-panel div.dt-overlay-titlebar {background-color: lightgrey; }
 
 div.dt-context-popup {
