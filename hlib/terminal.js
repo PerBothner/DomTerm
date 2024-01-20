@@ -4286,7 +4286,7 @@ Terminal.prototype._clearSelection = function() {
  * If focusNode is in same "outer pre" (_getOuterPre) as the caretNode
  * AND "readline-mode" [FIXME] send array keys to move caret to focus position.
  */
-Terminal.prototype._updateSelected = function() {
+Terminal.prototype._updateSelected = function(fromMouseUp = false) {
     let dt = this;
 
     if (this.mouseReporting()) {
@@ -4335,7 +4335,7 @@ Terminal.prototype._updateSelected = function() {
     let readlineForced = dt._altPressed;
     let moveOption = readlineForced ? "w" : null;
     if (dt._caretNode && dt._caretNode.parentNode !== null
-        && sel.focusNode !== null
+        && fromMouseUp && sel.focusNode !== null
         // only moveCaret if (single non-drag) mouse-click and not in paging-mode
         && this._pagingMode == 0 && point) {
         if (readlineForced) {
@@ -4498,7 +4498,7 @@ Terminal.prototype._mouseHandler = function(ev) {
 
     if (ev.type == "mouseup") {
         if (wasPressed)
-            this._updateSelected();
+            this._updateSelected(true);
         this._usingScrollBar = false;
         /*
         if (this.sstate.mouseMode == 0 && ev.button == 0) {
