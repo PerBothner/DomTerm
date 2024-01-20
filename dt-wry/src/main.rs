@@ -84,6 +84,7 @@ fn main() -> wry::Result<()> {
   }
 
   let new_window = create_new_window(&options, &event_loop, proxy.clone());
+  let window_number = new_window.2;
   webviews.insert(new_window.0.id(), new_window);
 
   event_loop.run(move |event, event_loop, control_flow| {
@@ -97,6 +98,7 @@ fn main() -> wry::Result<()> {
       } => {
         webviews.remove(&window_id);
         if webviews.is_empty() {
+          println!("CLOSE-WINDOW {}", window_number);
           *control_flow = ControlFlow::Exit
         }
       }
