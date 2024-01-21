@@ -690,7 +690,7 @@ appimage/DomTerm.AppImage: bin/domterm
 	echo "X-AppImage-Version=$(DOMTERM_VERSION)" >>$(APP_DESKTOP)
 	cp $(srcdir)/doc/domterm1.svg appimage/DomTerm.AppDir/domterm.svg
 	ldd ./appimage/DomTerm.AppDir/usr/bin/domterm|(grep '\(libwebsockets\|libstdc[+][+]\)[.]so'||true) >appimage/bad-dyn-libs
-	@if test -s appimage/bad-dyn-libs; then echo WARNING: These libraries should have static linking for AppImage:; cat appimage/bad-dyn-libs; fi
+	@if test -s appimage/bad-dyn-libs; then echo ERROR: These libraries should have static linking for AppImage:; cat appimage/bad-dyn-libs; exit -1; fi
 #	echo '#!/bin/bash' > $(APP_RUN)
 #	echo 'HERE="$$(dirname "$$(readlink -f "$${0}")")"' >>$(APP_RUN)
 #	echo 'exec "$$HERE/usr/bin/domterm" "$$@"' >>$(APP_RUN)
