@@ -115,7 +115,7 @@ AM_CONDITIONAL(WITH_ASCIIDOCTOR, test "$with_asciidoctor" = "yes")
 
 AM_CONDITIONAL(WITH_WEBVIEW, test "$with_webview" = "yes")
 case "${with_wry}" in
-  "yes" | "") WRY_DEPENDENCY=' version = "0.35.0"' ;;
+  "yes" | "") WRY_DEPENDENCY=' version = "0.35.2"' ;;
   "no") WRY_DEPENDENCY='' ;;
   "/"* | [.]*) WRY_DEPENDENCY=" path = \"${with_wry}\"" ;;
   *) WRY_DEPENDENCY="${with_wry}" ;;
@@ -218,6 +218,7 @@ AC_SUBST(QT_DOCKING_CFLAGS)
 AC_SUBST(QT_DOCKING_LIBDIR)
 
 HAVE_OPENSSL=0
+m4_ifndef([PKG_PROG_PKG_CONFIG], [AC_MSG_ERROR(PKG_PROG_PKG_CONFIG macro not found. Please install pkg-config and re-run autoreconf -i.)])
 PKG_PROG_PKG_CONFIG
 if test "$with_libwebsockets" != "no"; then
   dnl kludge around broken OpenSSL config in MacOS:
