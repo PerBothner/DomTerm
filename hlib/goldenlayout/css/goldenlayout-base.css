@@ -6,7 +6,8 @@
   --lm_drag_old_position_border: 2px tan dashed;
   --lm_splitter_drag_color: darkcyan;
 }
-.lm_items {
+.lm_items,
+.lm_dragProxy .lm_content {
   border-width: 1px;
   border-style: solid;
   border-color: var(--lm_border_color);
@@ -321,7 +322,6 @@ div.lm_drag_old_position .lm_controls {
 .lm_drop_tab_placeholder {
   float: left;
   padding-right: 100px;
-  height: 10px;
   visibility: hidden;
 }
 .lm_header .lm_controls .lm_tabdropdown:before {
@@ -364,13 +364,12 @@ div.lm_drag_old_position .lm_controls {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 30;
 }
 .lm_dragProxy .lm_header {
   background: transparent;
 }
 .lm_dragProxy .lm_content {
-  border-top: none;
+  position: static;
   overflow: hidden;
 }
 .lm_dropTargetIndicator {
@@ -416,15 +415,10 @@ div.lm_drag_old_position .lm_controls {
 .lm_popin > .lm_icon {
   z-index: 20;
 }
-.lm_dragImage {
-  position: absolute;
+.lm_dragProxy {
   opacity: 0.8;
 }
-.lm_dragImage section {
+.lm_dragProxy .lm_content {
   background-color: transparent;
-}
-.lm_dragImage .lm_dragImageInner {
-  border: solid 2px red;
-  background-color: transparent;
-  position: relative;
+  position: absolute;
 }
