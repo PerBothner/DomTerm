@@ -99,11 +99,10 @@ man1_MANS += share/man/man1/qtdomterm.1
 endif
 
 NODE_MODULES_PARENT = .
-NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/node_modules
+NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/lib/node_modules
 #XTERMJS_ADDONS_ROOT = $(NODE_MODULES_PARENT)/node_modules
 XTERMJS_ROOT = @XTERMJS_PATH@
 XTERMJS_ADDONS_ROOT = $(XTERMJS_ROOT)/addons
-XTERMJS_ADDONS = canvas fit image serialize unicode-graphemes web-links webgl
 NPM = npm
 
 ADOC_GENERATED = \
@@ -356,8 +355,10 @@ recompile-sixel:
 
 if WITH_XTERMJS
 if XTERMJS_FROM_NPM
-DOMTERM_JAR_EXTRA_DEPS = $(NODE_MODULES_DIR)/xterm/lib/xterm.js
+XTERMJS_ADDONS = fit image serialize web-links webgl
+DOMTERM_JAR_EXTRA_DEPS = $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.js
 else
+XTERMJS_ADDONS = fit image serialize unicode-graphemes web-links webgl
 if ENABLE_DEBUG
 DOMTERM_JAR_EXTRA_DEPS = tmp-xterm-debug-built
 else
@@ -371,15 +372,15 @@ $(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR) $(DOMTERM_JAR_EXTRA_DEPS)
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_XTERMJS
 if XTERMJS_FROM_NPM
-	cp $(NODE_MODULES_DIR)/xterm/lib/xterm.js tmp-for-jar/hlib
+	cp $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(NODE_MODULES_DIR)/xterm-addon-$$ADDON/lib/xterm-addon-$$ADDON.js tmp-for-jar/hlib; done
-	cp $(NODE_MODULES_DIR)/xterm/css/xterm.css tmp-for-jar/hlib
+	  cp $(NODE_MODULES_DIR)/@xterm/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
+	cp $(NODE_MODULES_DIR)/@xterm/xterm/css/xterm.css tmp-for-jar/hlib
 else
 if ENABLE_DEBUG
 	cp $(XTERMJS_ROOT)/debug-lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
+	  cp $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
 else
 	cp $(XTERMJS_ROOT)/lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
@@ -719,15 +720,15 @@ doc/DomTerm.iconset: doc/domterm2.svg
 doc/DomTerm.icns: doc/DomTerm.iconset
 	iconutil -c icns -o $@ doc/DomTerm.iconset
 
-$(NODE_MODULES_DIR)/xterm/lib/xterm.js:
-	cd $(NODE_MODULES_PARENT) && $(NPM) install xterm
+$(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.js:
+	cd $(NODE_MODULES_PARENT) && $(NPM) install @xterm/xterm `for ADDON in $(XTERMJS_ADDONS); do echo @xterm/addon-$$ADDON; done` --global --prefix $(NODE_MODULES_PARENT)
 
 # Should probably use a git "submodule"
 xtermjs:
 	git clone git@github.com:xtermjs/xterm.js.git xtermjs
 
 tmp-xterm-built: $(XTERMJS_ROOT)
-	cd $(XTERMJS_ROOT) && yarn setup && yarn && npm run package
+	cd $(XTERMJS_ROOT) && yarn && yarn setup && npm run package
 	for ADDON in $(XTERMJS_ADDONS); do \
 	  (cd $(XTERMJS_ROOT)/addons/addon-$$ADDON && npm run package); done
 	touch tmp-xterm-built

@@ -2,9 +2,9 @@ import { Terminal as DTerminal } from './terminal.js';
 import * as DtUtil from './domterm-utils.js';
 
 const XTerm = window.Terminal;
-const CanvasAddon = window.CanvasAddon.CanvasAddon;
 const FitAddon = window.FitAddon.FitAddon;
-const UnicodeProvider = window.UnicodeGraphemesAddon.UnicodeGraphemesAddon;
+//Not available in xterm.js 5.5.0, which is current NPM version.
+//const UnicodeProvider = window.UnicodeGraphemesAddon.UnicodeGraphemesAddon);
 const ImageAddon = window.ImageAddon.ImageAddon;
 //The following doesn't work - see https://github.com/xtermjs/xterm.js/issues/4424
 //const SerializeAddon = SerializeAddon.SerializeAddon;
@@ -28,7 +28,8 @@ class XTermPane extends DTerminal {
         super(windowNumber, "xterminal");
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon.SerializeAddon();
-        this.unicodeProvider = new UnicodeProvider();
+        if (window.UnicodeGraphemesAddon)
+            this.unicodeProvider = new window.UnicodeGraphemesAddon.UnicodeGraphemesAddon();
         this.imageAddon = new ImageAddon(imageCustomSettings);
     }
     initializeTerminal(_topNode) {
@@ -159,7 +160,8 @@ class XTermPane extends DTerminal {
         xterm.loadAddon(this.imageAddon);
         xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
-        xterm.loadAddon(this.unicodeProvider);
+        if (this.unicodeProvider)
+            xterm.loadAddon(this.unicodeProvider);
         this.attachResizeSensor();
         this.setRendererType(this.rendererType);
     }
@@ -224,7 +226,7 @@ class XTermPane extends DTerminal {
         data += ', "serialized":'
             + JSON.stringify(this.serializeAddon.serialize())
             +'}';
-        this.reportEvent("WINDOW-CONTENTS", data);
+            this.reportEvent("WINDOW-CONTENTS", data);
     }
 
     updateThemeLater(context) {
@@ -270,14 +272,6 @@ class XTermPane extends DTerminal {
     // based on code in ttyd
     setRendererType(value) {
         //const { terminal } = this;
-        const disposeCanvasRenderer = () => {
-            try {
-                this.canvasAddon?.dispose();
-            } catch {
-                // ignore
-            }
-            this.canvasAddon = undefined;
-        };
         const disposeWebglRenderer = () => {
             try {
                 this.webglAddon?.dispose();
@@ -286,22 +280,9 @@ class XTermPane extends DTerminal {
             }
             this.webglAddon = undefined;
         };
-        const enableCanvasRenderer = () => {
-            if (this.canvasAddon) return;
-            this.canvasAddon = new CanvasAddon();
-            disposeWebglRenderer();
-            try {
-                this.xterm.loadAddon(this.canvasAddon);
-                console.log('canvas renderer loaded');
-            } catch (e) {
-                console.log('canvas renderer could not be loaded, falling back to dom renderer', e);
-                disposeCanvasRenderer();
-            }
-        };
         const enableWebglRenderer = () => {
             if (this.webglAddon) return;
             this.webglAddon = new WebglAddon();
-            disposeCanvasRenderer();
             try {
                 this.webglAddon.onContextLoss(() => {
                     this.webglAddon?.dispose();
@@ -309,22 +290,17 @@ class XTermPane extends DTerminal {
                 this.xterm.loadAddon(this.webglAddon);
                 console.log('WebGL renderer loaded');
             } catch (e) {
-                console.log('WebGL renderer could not be loaded, falling back to canvas renderer', e);
+                console.log('WebGL renderer could not be loaded, falling back to dom renderer', e);
                 disposeWebglRenderer();
-                enableCanvasRenderer();
             }
         };
 
         switch (value) {
-            case 'canvas':
-                enableCanvasRenderer();
-                break;
             case 'webgl':
                 enableWebglRenderer();
                 break;
             case 'dom':
                 disposeWebglRenderer();
-                disposeCanvasRenderer();
                 console.log('dom renderer loaded');
                 break;
             default:

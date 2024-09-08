@@ -1050,7 +1050,7 @@ Terminal.BELL_TEXT = "BELL!";
 /** Length of time to display BELL_TEXT. */
 Terminal.INFO_TIMEOUT = 1200;
 
-Terminal.defaultXtRendererType = 'canvas'; // 'dom' 'canvas' or 'webgl'
+Terminal.defaultXtRendererType = 'dom'; // 'dom' or 'webgl'
 
 window.addEventListener("unload", DomTerm.closeAll);
 
@@ -5940,7 +5940,7 @@ DomTerm.initSettings = function(term) {
                    const pane = context.pane;
                    const isXtermjs = window.XTermPane &&
                          pane instanceof XTermPane;
-                   if (val === "dom" || val === "canvas" || val == "webgl")
+                   if (val === "dom" || val == "webgl")
                        v = 1;
                    else if (v > 0 && isXtermjs)
                        val = Terminal.defaultXtRendererType;
