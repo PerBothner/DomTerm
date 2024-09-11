@@ -11,9 +11,9 @@ use tao::{
   dpi::{LogicalPosition, LogicalSize},
   event::{Event, WindowEvent},
   event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget},
-  window::{Icon, Window, WindowBuilder, WindowId},
+  window::{Icon, ResizeDirection, Window, WindowBuilder, WindowId},
 };
-use wry::{WebView, WebViewBuilder};
+use wry::{http::Request, WebView, WebViewBuilder};
 mod versions;
 
 enum UserEvent {
@@ -21,6 +21,8 @@ enum UserEvent {
   NewTitle(WindowId, String),
   WindowOp(WindowId, String),
   MoveWindow(WindowId, String),
+  DragWindow(WindowId),
+  ResizeWindow(WindowId, ResizeDirection),
   Devtools(WindowId, String),
   NewWindow(serde_json::Map<String, Value>),
 }
@@ -126,6 +128,14 @@ fn main() -> wry::Result<()> {
             webview.open_devtools();
           }
         }
+      }
+      Event::UserEvent(UserEvent::ResizeWindow(id, direction)) => {
+        let window = &webviews.get(&id).unwrap().0;
+        window.drag_resize_window(direction).unwrap();
+      }
+      Event::UserEvent(UserEvent::DragWindow(id)) => {
+        let window = &webviews.get(&id).unwrap().0;
+        window.drag_window().unwrap();
       }
       Event::UserEvent(UserEvent::MoveWindow(id, data)) => {
         let window = &webviews.get(&id).unwrap().0;
@@ -250,8 +260,9 @@ fn create_new_window(
     move_window(position.as_str(), &window);
   }
   let window_id = window.id();
-  let handler = move |req: String| {
-    match req.split_once(' ').unwrap_or((&req, "")) {
+  let handler = move |req: Request<String>| {
+    let body = req.body();
+    match body.split_once(' ').unwrap_or((&body, "")) {
       ("set-title", data) => {
         let _ = proxy.send_event(UserEvent::NewTitle(window_id, data.to_string()));
       }
@@ -260,11 +271,28 @@ fn create_new_window(
           let _ = proxy.send_event(UserEvent::NewWindow(options));
         } // else handle error FIXME
       }
+      ("drag-window", _) => {
+        let _ = proxy.send_event(UserEvent::DragWindow(window_id));
+      }
+      ("resize-window", data) => {
+        let dir = match data {
+          "w" => ResizeDirection::West,
+          "e" => ResizeDirection::East,
+          "n" => ResizeDirection::North,
+          "s" => ResizeDirection::South,
+          "n w" => ResizeDirection::NorthWest,
+          "n e" => ResizeDirection::NorthEast,
+          "s w" => ResizeDirection::SouthWest,
+          "s e" => ResizeDirection::SouthEast,
+          _ => ResizeDirection::South /* shouldn't happen */
+        };
+        let _ = proxy.send_event(UserEvent::ResizeWindow(window_id, dir));
+      }
       ("move-window", data) => {
         let _ = proxy.send_event(UserEvent::MoveWindow(window_id, data.to_string()));
       }
       ("hide" | "show" | "minimize" | "maximize", _) => {
-        let _ = proxy.send_event(UserEvent::WindowOp(window_id, req));
+        let _ = proxy.send_event(UserEvent::WindowOp(window_id, body.to_string()));
       }
       ("devtools", data) => {
         let _ = proxy.send_event(UserEvent::Devtools(window_id, data.to_string()));
@@ -274,11 +302,6 @@ fn create_new_window(
       }
       _ => {}
     }
-    /*
-             if req == "drag_window" {
-                 let _ = window.drag_window();
-    }
-    */
   };
   #[cfg(any(
     target_os = "windows",
@@ -301,8 +324,7 @@ fn create_new_window(
     WebViewBuilder::new_gtk(vbox)
   };
   let webview = builder
-    .with_url(&url)
-    .unwrap()
+    .with_url(url)
     .with_initialization_script(&script)
     .with_clipboard(true)
     .with_ipc_handler(handler)

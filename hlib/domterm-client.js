@@ -253,7 +253,7 @@ DomTerm.createTitlebar = function(titlebarNode, tabs) {
             if (! dragWindowTarget(e.target))
                 return;
             if (DomTerm.versions.wry)
-                ipc.postMessage('drag_window');
+                ipc.postMessage('drag-window');
             if (DomTerm.startSystemMove) {
                 DomTerm.startSystemMove();
             }
@@ -279,13 +279,13 @@ DomTerm.createTitlebar = function(titlebarNode, tabs) {
 }
 
 function createResizeAreas() {
-    if (DomTerm.usingQtWebEngine) {
+    if (DomTerm.versions.wry || DomTerm.usingQtWebEngine) {
         const resizeAreas = document.createElement('div');
         resizeAreas.classList.add("dt-resize-areas");
         document.body.appendChild(resizeAreas);
         function resizeHandler(ev) {
             const edges = ev.target.getAttribute("edges");
-            DomTerm.startSystemResize(edges);
+            DomTerm?.startSystemResize(edges);
         }
         function subarea(edges) {
             const resizeArea = document.createElement('div');
@@ -436,8 +436,12 @@ function loadHandler(event) {
         if (DomTerm.addTitlebar) {
             let titlebarNode = document.createElement('div');
             titlebarNode.classList.add('dt-titlebar');
-            if (DomTerm.versions.wry)
+            if (DomTerm.versions.wry) {
                 titlebarNode.setAttribute("data-tauri-drag-region", "");
+                DomTerm.startSystemResize = function(edges) {
+                    ipc.postMessage('resize-window ' + edges);
+                }
+            }
             titlebarNode.spellcheck = false;
             bodyNode.appendChild(titlebarNode);
             DomTerm.titlebarElement = titlebarNode;
