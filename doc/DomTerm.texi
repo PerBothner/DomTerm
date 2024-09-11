@@ -2666,7 +2666,7 @@ titlebar (on other platforms the custom titlebar is additional).
 The @var{mode} can be @code{system} to use the system
 titlebar, or @code{domterm} to use a custom titlebar (in HTML).
 Further options and customization is planned for later.
-The default on Electron and Qt is @code{domterm},
+The default on Electron, Wry, and Qt is @code{domterm},
 and @code{system} otherwise.
 
 @indsetting{subwindows}
@@ -3619,7 +3619,7 @@ Otherwise send @kbd{Ctrl+@key{V}} literally to the process.
 
 The following commands change the @ref{effective window scale}
 by zooming in or out, relative to the @code{window-scale} setting.
-The entire top window is zoomed, icnluding sub-windows, titlebars,
+The entire top window is zoomed, including sub-windows, titlebars,
 and menus (unless you're using system titlebars or menus).
 
 @table @asis

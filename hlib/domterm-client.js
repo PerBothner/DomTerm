@@ -337,7 +337,7 @@ function loadHandler(event) {
         DomTerm.logToServer = m;
     m = params.get('titlebar');
     if (m !== "system"
-        && (m || DomTerm.isElectron() || DomTerm.usingQtWebEngine)) {
+        && (m || DomTerm.isElectron() || DomTerm.usingQtWebEngine || DomTerm.versions.wry)) {
         DomTerm.addTitlebar = true;
     }
     const useXtermJs = params.get("terminal") === "xtermjs";
@@ -437,7 +437,7 @@ function loadHandler(event) {
             let titlebarNode = document.createElement('div');
             titlebarNode.classList.add('dt-titlebar');
             if (DomTerm.versions.wry) {
-                titlebarNode.setAttribute("data-tauri-drag-region", "");
+                //titlebarNode.setAttribute("data-tauri-drag-region", "");
                 DomTerm.startSystemResize = function(edges) {
                     ipc.postMessage('resize-window ' + edges);
                 }

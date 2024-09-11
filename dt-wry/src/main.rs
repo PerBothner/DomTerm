@@ -190,7 +190,7 @@ fn create_new_window(
   let wversion = wry::webview_version();
   let titlebar = match options.get("titlebar") {
     Some(t) => t.as_str().unwrap_or("") == "system",
-    None => true, // default to "system" titlebar
+    None => false, // default to "domterm" titlebar
   };
   let wversion_js = match wversion {
     Ok(v) => format!("    window.webview_version = \"{}\";\n", v),
