@@ -223,8 +223,12 @@ static const struct lws_extension extensions[] = {
 
 #define ZIP_MOUNT "/"
 
+static struct lws_protocol_vhost_options extra_mimetypes0 = {
+    NULL, NULL, ".js.map", "application/json"
+};
+
 static struct lws_protocol_vhost_options extra_mimetypes = {
-    NULL, NULL, ".mjs", "text/javascript"
+    &extra_mimetypes0, NULL, ".mjs", "text/javascript"
 };
 
 static struct lws_http_mount mount_domterm_zip = {
@@ -1259,13 +1263,13 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/jsMenus.js", LIB_WHEN_OUTER|LIB_WHEN_XTERMJS},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
-    {"hlib/xterm.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm-addon-fit.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm-addon-image.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm-addon-serialize.js", LIB_WHEN_XTERMJS},
-    {"hlib/xterm-addon-web-links.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm-addon-unicode-graphemes.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm-addon-webgl.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm/xterm.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm/addon-fit.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm/addon-image.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm/addon-serialize.js", LIB_WHEN_XTERMJS},
+    {"hlib/xterm/addon-web-links.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm/addon-unicode-graphemes.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xterm/addon-webgl.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterminal.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     //{"hlib/fit.js", LIB_WHEN_XTERMJS},

@@ -371,20 +371,21 @@ $(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR) $(DOMTERM_JAR_EXTRA_DEPS)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_XTERMJS
+	$(MKDIR_P) tmp-for-jar/hlib/xterm
 if XTERMJS_FROM_NPM
-	cp $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.js tmp-for-jar/hlib
+	cp $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.js tmp-for-jar/hlib/xterm
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(NODE_MODULES_DIR)/@xterm/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
+	  cp $(NODE_MODULES_DIR)/@xterm/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm/addon-$$ADDON.js; done
 	cp $(NODE_MODULES_DIR)/@xterm/xterm/css/xterm.css tmp-for-jar/hlib
 else
 if ENABLE_DEBUG
-	cp $(XTERMJS_ROOT)/debug-lib/xterm.js tmp-for-jar/hlib
+	cp $(XTERMJS_ROOT)/debug-lib/xterm.js  $(XTERMJS_ROOT)/debug-lib/xterm.js.map tmp-for-jar/hlib/xterm
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
+	  cp $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.js $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.js.map tmp-for-jar/hlib/xterm/; done
 else
 	cp $(XTERMJS_ROOT)/lib/xterm.js tmp-for-jar/hlib
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm-addon-$$ADDON.js; done
+	  cp $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/$$ADDON.js $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/$$ADDON.js.map tmp-for-jar/hlib/xterm/; done
 endif
 	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib
 endif

@@ -59,6 +59,7 @@ struct mimetype {
     { ".html", "text/html" },
     { ".css", "text/css" },
     { ".js", "text/javascript" },
+    { ".js.map", "application/json" },
     { ".mjs", "text/javascript" },
     { nullptr, nullptr }
 };
