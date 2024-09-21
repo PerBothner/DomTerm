@@ -52,7 +52,22 @@ class XTermPane extends DTerminal {
         };
         xterm.options.linkHandler = linkHandler;
         xterm.options.scrollback = Infinity;
+        let insertHtmlSupported = xterm.options.allowInsertHtml !== undefined;
+        let allowInsertHtml = insertHtmlSupported; // FIXME
+        xterm.options.allowInsertHtml = allowInsertHtml;
+        xterm.options.scrollPartialLines = true;
         xterm.options.allowProposedApi = true;
+        const winOptions = xterm.options.windowOptions;
+        /*
+        winOptions.restoreWin = true;
+        winOptions.minimizeWin = true;
+        winOptions.setWinSizeChars = true;
+        */
+        winOptions.getWinSizeChars = true;
+        winOptions.getWinSizePixels = true;
+        winOptions.getCellSizePixels = true;
+        winOptions.pushTitle = true;
+        winOptions.popTitle = true;
 
         xterm.attachCustomKeyEventHandler((e) => {
             if (e.type == 'keypress')
@@ -83,6 +98,16 @@ class XTermPane extends DTerminal {
                                }
                                return false;
                            });
+        if (allowInsertHtml) {
+            xterm.parser
+                .registerOscHandler(72,
+                                    (text) => {
+                                        const htmlOptions = {};
+                                        text = DtUtil.scrubHtml(text, htmlOptions);
+                                        xterm.insertHtml(text);
+                                        //term._scrubAndInsertHTML(text); });
+                                    });
+        }
         xterm.parser
             .registerOscHandler(88,
                                 (text) => { DomTerm.setOptions(text); });
@@ -193,7 +218,6 @@ class XTermPane extends DTerminal {
                 jstr += " paused";
             if (this._savedControlState)
                 jstr += " urgent";
-            this.log("parseBytes "+jstr);
         }
         let rlen = endIndex - beginIndex;
         this.terminal.write(bytes.slice(beginIndex, endIndex));
