@@ -745,7 +745,7 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     int xtermjs_value = bool_value(xtermjs_opt.c_str());
     if (xtermjs_value > 0 ||
         (xtermjs_value < 0
-         && (xtermjs_opt == "dom" || xtermjs_opt == "canvas" || xtermjs_opt == "webgl"))) {
+         && (xtermjs_opt == "dom" || xtermjs_opt == "webgl"))) {
         pclient->use_xtermjs = true;
     }
 #endif
