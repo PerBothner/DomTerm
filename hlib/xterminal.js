@@ -218,6 +218,7 @@ class XTermPane extends DTerminal {
                 jstr += " paused";
             if (this._savedControlState)
                 jstr += " urgent";
+            this.log("parseBytes "+jstr+" state:"+this.controlSequenceState/*+" ms:"+ms*/);
         }
         let rlen = endIndex - beginIndex;
         this.terminal.write(bytes.slice(beginIndex, endIndex));
