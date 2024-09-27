@@ -321,6 +321,7 @@ export function scrubHtml(str, options = {}) {
     let skipping = 0;
 
     var activeTags = new Array();
+    let msg = undefined;
     loop:
     for (;;) {
         if (i == len) {
@@ -341,16 +342,19 @@ export function scrubHtml(str, options = {}) {
         case 38 /*'&'*/:
             ok = i-1;
             for (;;) {
-                if (i == len)
+                if (i == len) {
                     break loop;
+                }
                 ch = str.charCodeAt(i++);
                 if (ch == 59) //';'
                     break;
                 if (! ((ch >= 65 && ch <= 90)  // 'A'..'Z'
                        || (ch >= 97 && ch <= 122) // 'a'..'z'
                        || (ch >= 48 && ch <= 57) // '0'..'9'
-                       || (ch == 35 && i==ok+2))) // initial '#'
+                       || (ch == 35 && i==ok+2))) { // initial '#'
+                    msg = 'invalid character following "&amp;"';
                     break loop;
+                }
             }
             break;
         case 62: // '>'
@@ -358,8 +362,10 @@ export function scrubHtml(str, options = {}) {
             break;
         case 60 /*'<'*/:
             ok = i-1;
-            if (i + 1 == len)
+            if (i + 1 >= len) {
+                msg = 'unepected end following "&lt;"';
                 break loop; // invalid
+            }
             ch = str.charCodeAt(i++);
             if (ok == 0) {
                 let m;
@@ -397,8 +403,10 @@ export function scrubHtml(str, options = {}) {
             if (end)
                 ch = str.charCodeAt(i++);
             for (;;) {
-                if (i == len)
+                if (i == len) {
+                    msg = 'unexpected end after element start';
                     break loop; // invalid
+                }
                 ch = str.charCodeAt(i++);
                 if (! ((ch >= 65 && ch <= 90)  // 'A'..'Z'
                        || (ch >= 97 && ch <= 122) // 'a'..'z'
@@ -413,6 +421,7 @@ export function scrubHtml(str, options = {}) {
                 var tag = str.substring(ok+2,i-1);
                 var einfo = elementInfo(tag, activeTags);
                 if (activeTags.length == 0) {
+                    msg = 'unmatched closing tag ' + tag;
                     // maybe TODO: allow unbalanced "</foo>" to pop from foo.
                     break loop;
                 } else if (activeTags.pop() == tag) {
@@ -451,8 +460,10 @@ export function scrubHtml(str, options = {}) {
             } else { // element start tag
                 var tag = str.substring(ok+1,i-1);
                 var einfo = elementInfo(tag, activeTags);
-                if ((einfo & ELEMENT_KIND_ALLOW) == 0 && skipping == 0)
+                if ((einfo & ELEMENT_KIND_ALLOW) == 0 && skipping == 0) {
+                    msg = 'element &lt;' + tag + '&gt; not allowed';
                     break loop;
+                }
                 if ((einfo & ELEMENT_KIND_SKIP_FULLY) != 0) {
                     activeTags.push(ok);
                     skipping++;
@@ -472,8 +483,10 @@ export function scrubHtml(str, options = {}) {
                     if (attrstart == attrend) {
                         if (ch == 62 || ch == 47) // '>' or '/'
                             break;
-                        else
-                            break loop; // invalid - junk in element start
+                        else {
+                            msg = 'invalid character in element start';
+                            break loop;
+                        }
                     }
                     var attrname = str.substring(attrstart,attrend);
                     while (ch <= 32 && i < len)
@@ -510,8 +523,10 @@ export function scrubHtml(str, options = {}) {
                     }
                     let attrvalue = str.substring(valstart, valend);
                     if (! allowAttribute(attrname, attrvalue,
-                                              einfo, activeTags))
+                                         einfo, activeTags)) {
+                        msg = 'unallowed attribute ' + attrname;
                         break loop;
+                    }
                     if ((einfo & ELEMENT_KIND_CHECK_JS_TAG) != 0
                         && (attrname=="href" || attrname=="domterm-href"
                             || attrname=="src")) {
@@ -554,9 +569,10 @@ export function scrubHtml(str, options = {}) {
                         skipping--;
                         ok = activeTags.pop();
                     }
-                } else if (ch != 62) // '>'
-                    break loop; // invalid
-                else if ((einfo & ELEMENT_KIND_EMPTY) != 0)
+                } else if (ch != 62) { // '>'
+                    msg = 'expected "&gt;"';
+                    break loop;
+                } else if ((einfo & ELEMENT_KIND_EMPTY) != 0)
                     activeTags.pop();
                 if ((einfo & ELEMENT_KIND_CONVERT_TO_DIV) != 0) {
                     str = str.substring(0, ok)
@@ -581,11 +597,17 @@ export function scrubHtml(str, options = {}) {
         }
     }
     if (ok < len) {
-        str = escapeText(str.substring(ok, len));
-        str = '<div style="color: red"><b>Inserted invalid HTML starting here:</b>'
-            + '<pre style="background-color: #fee">'
-            + str + '</pre></div>';
         options.errorSeen = "invalid";
+        const estr = escapeText(str.substring(ok, Math.min(len, ok + 60)));
+        str = '<p style="color: red"><b>Inserted invalid HTML ';
+        if (msg) {
+            str += '(' + msg + ') ';
+            options.errorSeen += ' - ' + msg;
+        }
+        str += 'starting here '
+            + '(offset: ' + ok + ' string-length: ' + len + '):</b>'
+            + '<pre style="background-color: #fee">' + estr + '</pre>'
+            + '</p>';
     } else if (activeTags.length > 0) {
         str = "";
         while (activeTags.length)
