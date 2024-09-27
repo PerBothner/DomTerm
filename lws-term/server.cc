@@ -453,11 +453,7 @@ options::options()
     do_daemonize = 1;
     debug_level = 0;
     iface = NULL;
-#if defined(TIOCPKT) && defined(EXTPROC)
-    tty_packet_mode = "extproc";
-#else
-    tty_packet_mode = "no";
-#endif
+    tty_packet_mode = nullptr;
 #if HAVE_OPENSSL
     ssl = false;
     cert_path = NULL;

@@ -702,16 +702,26 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     struct lws *outwsi;
     int master;
     int slave;
-    bool packet_mode = false;
+    bool packet_mode = false, use_xtermjs = false;
 
     if (openpty(&master, &slave,NULL, NULL, NULL)) {
         lwsl_err("openpty\n");
         return NULL;
     }
+#if WITH_XTERMJS
+    std::string xtermjs_opt = get_setting_s(opts->settings, "xtermjs", "false");
+    int xtermjs_value = bool_value(xtermjs_opt.c_str());
+    if (xtermjs_value > 0 ||
+        (xtermjs_value < 0
+         && (xtermjs_opt == "dom" || xtermjs_opt == "webgl"))) {
+        use_xtermjs = true;
+    }
+#endif
     fcntl(master, F_SETFD, FD_CLOEXEC);
     fcntl(slave, F_SETFD, FD_CLOEXEC);
 #if USE_PTY_PACKET_MODE
     if (! ssh_remoting
+        && ! use_xtermjs // for now
         && ! (opts->tty_packet_mode
               && strcmp(opts->tty_packet_mode, "no") == 0)) {
         int nonzero = 1;
@@ -738,17 +748,9 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     struct pty_client *pclient = new (lws_wsi_user(outwsi)) pty_client();
     pclient->ttyname = tname;
     pclient->uses_packet_mode = packet_mode;
+    pclient->use_xtermjs = use_xtermjs;
     tserver.session_count++;
 
-#if WITH_XTERMJS
-    std::string xtermjs_opt = get_setting_s(opts->settings, "xtermjs", "false");
-    int xtermjs_value = bool_value(xtermjs_opt.c_str());
-    if (xtermjs_value > 0 ||
-        (xtermjs_value < 0
-         && (xtermjs_opt == "dom" || xtermjs_opt == "webgl"))) {
-        pclient->use_xtermjs = true;
-    }
-#endif
     int hint = t_hint ? t_hint->connection_number : -1;
     if (hint > 0 &&
         (! tty_clients.valid_index(hint) || pty_clients.valid_index(hint)))
