@@ -3,6 +3,7 @@ import * as DtUtil from './domterm-utils.js';
 
 const XTerm = window.Terminal;
 const FitAddon = window.FitAddon.FitAddon;
+const WebLinksAddon = window.WebLinksAddon.WebLinksAddon;
 //Not available in xterm.js 5.5.0, which is current NPM version.
 //const UnicodeProvider = window.UnicodeGraphemesAddon.UnicodeGraphemesAddon);
 const ImageAddon = window.ImageAddon.ImageAddon;
@@ -26,7 +27,24 @@ const imageCustomSettings = {
 class XTermPane extends DTerminal {
     constructor(windowNumber) {
         super(windowNumber, "xterminal");
+        this.activateLink = (event, uri) => {
+            console.log("link activate "+uri);
+            DomTerm.handleLinkRef(uri, undefined, this);
+        };
+        this.linkHandler = {
+            activate: (ev, text, range) => {
+                this.activateLink(ev, text);
+            },
+            hover: (ev, text, range) => {
+                console.log("link hover "+text);
+            },
+            leave: (ev, text, range) => {
+                console.log("link leave "+text);
+            },
+            allowNonHttpProtocols: true
+        };
         this.fitAddon = new FitAddon();
+        this.webLinksAddon = new WebLinksAddon(this.activateLink, this.linkHandler);
         this.serializeAddon = new SerializeAddon.SerializeAddon();
         if (window.UnicodeGraphemesAddon)
             this.unicodeProvider = new window.UnicodeGraphemesAddon.UnicodeGraphemesAddon();
@@ -37,20 +55,7 @@ class XTermPane extends DTerminal {
         const xterm = this.terminal;
         this.xterm = xterm;
 
-        const linkHandler = {
-            activate: (ev, text, range) => {
-                console.log("link activate "+text);
-                DomTerm.handleLinkRef(text, undefined, this);
-            },
-            hover: (ev, text, range) => {
-                console.log("link hover "+text);
-            },
-            leave: (ev, text, range) => {
-                console.log("link leave "+text);
-            },
-            allowNonHttpProtocols: true
-        };
-        xterm.options.linkHandler = linkHandler;
+        xterm.options.linkHandler = this.linkHandler;
         xterm.options.scrollback = Infinity;
         let insertHtmlSupported = xterm.options.allowInsertHtml !== undefined;
         let allowInsertHtml = insertHtmlSupported; // FIXME
@@ -182,6 +187,7 @@ class XTermPane extends DTerminal {
         });
 
         xterm.loadAddon(this.fitAddon);
+        xterm.loadAddon(this.webLinksAddon);
         xterm.loadAddon(this.imageAddon);
         xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
