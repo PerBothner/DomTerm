@@ -254,8 +254,8 @@ body[reverse-video] .dt-titlebar-button:hover, body[reverse-video] .dt-titlebar 
 
 div.dt-context-popup {
     font-size: small;
+    line-break: normal; /* auto doesn't work for WebKit */
     padding: 4px;
-    width: 30em;
     min-width: 15em;
     max-width: 80%;
     border: thin solid;

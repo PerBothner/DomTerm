@@ -3821,7 +3821,7 @@ Terminal.prototype.hoverHandler = function(event, dt, element, setInfoAction) {
         const elBoxes = element.getClientRects();
         const nBoxes = elBoxes.length;
         if (nBoxes > 0) {
-            let margin = 2;
+            let margin = 8;
             let closest = elBoxes[0];
             let top = closest.top - popBox.height;
             // Position popup above element, if there is room.

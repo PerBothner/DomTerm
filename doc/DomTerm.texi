@@ -4988,7 +4988,7 @@ A click opens a browser window/tab or an application, as described below,
 as does right-click (context menu) and then selecting @code{Open Link}.
 @item
 A @dfn{subtle link} is only active
-if you also hold the the @key{Ctrl} key; you can also use the context menu.
+if you also hold the the @key{Ctrl} key (@key{Cmd} key on macOS); you can also use the context menu.
 This is to reduce accidental clicks.
 Links created implicitly using pattern-matching are subtle,
 and additionally have no special styling except when mouse hovered.

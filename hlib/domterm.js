@@ -146,7 +146,8 @@ DomTerm.clickLink = function(e, dt = DomTerm.focuedTerm) {
             let href = (n.getAttribute("domterm-href")
                         || n.getAttribute("href"));
             if (href
-                && (e.ctrlKey || !dt || ! dt._linkNeedsCtrlClick(n))) {
+                && ((DomTerm.isMac ? e.metaKey : e.ctrlKey)
+                    || !dt || ! dt._linkNeedsCtrlClick(n))) {
                 DomTerm.handleLinkRef(href,
                                       n.textContent, dt);
 

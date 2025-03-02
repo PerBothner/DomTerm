@@ -28,18 +28,50 @@ class XTermPane extends DTerminal {
     constructor(windowNumber) {
         super(windowNumber, "xterminal");
         this.activateLink = (event, uri) => {
-            console.log("link activate "+uri);
             DomTerm.handleLinkRef(uri, undefined, this);
+        };
+        let linkPopup;
+        const ctrlRequiredForLink = () => { return true; };
+        const removeLinkPopup = () => {
+            if (linkPopup) {
+                linkPopup.remove();
+                linkPopup = undefined;
+            }
+        };
+        const showLinkPopup = (event, text, topNode) => {
+            removeLinkPopup();
+            let popup = document.createElement('div');
+            popup.classList.add('dt-context-popup');
+            popup.style.position = 'absolute'; // or 'fixed' ???
+            popup.style.top = (event.clientY + 25) + 'px';
+            popup.style.right = '0.5em';
+            popup.innerText = text;
+            if (ctrlRequiredForLink()) {
+                popup.appendChild(document.createElement('br'));
+                const e2 = document.createElement('i');
+                e2.innerText = `(${DomTerm.isMac ? 'Cmd' : 'Ctrl'}+Click to open link)`;
+                popup.appendChild(e2);
+            }
+            topNode.appendChild(popup);
+            const popupHeight = popup.offsetHeight;
+            if (event.clientY + 25 + popupHeight > topNode.clientHeight) {
+                let y = event.clientY - 25 - popupHeight;
+                popup.style.top = (y < 0 ? 0 : y) + 'px';
+            }
+            linkPopup = popup;
         };
         this.linkHandler = {
             activate: (ev, text, range) => {
-                this.activateLink(ev, text);
+                if (! ctrlRequiredForLink()
+                    || (DomTerm.isMac ? ev.metaKey : ev.ctrlKey)) {
+                    this.activateLink(ev, text);
+                }
             },
             hover: (ev, text, range) => {
-                console.log("link hover "+text);
+                showLinkPopup(ev, text, ev.target);
             },
             leave: (ev, text, range) => {
-                console.log("link leave "+text);
+                removeLinkPopup();
             },
             allowNonHttpProtocols: true
         };
