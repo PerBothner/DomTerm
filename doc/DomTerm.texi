@@ -6072,6 +6072,8 @@ for more advanced Qt docking librariers:
 Theia and Jupyter use @uref{https://phosphorjs.github.io/,PhosphorJS}, now archived.
 A newer version is part of @uref{https://jupyterlab.readthedocs.io/en/stable/,JupyterLab}.
 
+Other JavaScript docking libraries include @uref{https://github.com/node-projects/dock-spawn-ts,dock-spawn-ts} (which links to some other libraries), and @uref{https://github.com/mathuo/dockview,dockview}.
+
 Similarly, when running under a
 @uref{https://en.wikipedia.org/wiki/Tiling_window_manager,tiling window manager}
 using the latter to manage panes and tabs is likely preferable.
