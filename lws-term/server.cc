@@ -221,6 +221,7 @@ static const struct lws_extension extensions[] = {
 };
 #endif
 
+#if ! COMPILED_IN_RESOURCES
 #define ZIP_MOUNT "/"
 
 static struct lws_protocol_vhost_options extra_mimetypes0 = {
@@ -231,25 +232,17 @@ static struct lws_protocol_vhost_options extra_mimetypes = {
     &extra_mimetypes0, NULL, ".mjs", "text/javascript"
 };
 
+
+
 static struct lws_http_mount mount_domterm_zip = {
-    NULL,                   /* linked-list pointer to next*/
-    ZIP_MOUNT,              /* mountpoint in URL namespace on this vhost */
-    "<change this>",      /* handler */
-    "",   /* default filename if none given */
-    NULL,
-    NULL,
-    &extra_mimetypes,
-    NULL,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    LWSMPRO_FILE,   /* origin points to a callback */
-    sizeof(ZIP_MOUNT)-1,
-    NULL,
+    .mountpoint = ZIP_MOUNT,
+    .origin = "<change this>", // ???
+    .def = "",
+    .extra_mimetypes = &extra_mimetypes,
+    .origin_protocol = LWSMPRO_FILE,
+    .mountpoint_len = sizeof(ZIP_MOUNT)-1,
 };
+#endif
 
 #define CHROME_OPTION 1000
 #define FIREFOX_OPTION 1001
@@ -803,15 +796,15 @@ main(int argc, char **argv)
     info.extensions = extensions;
 #endif
     info.timeout_secs = 5;
-#ifndef ENABLE_COMPILED_IN_RESOURCES
+#if ! COMPILED_IN_RESOURCES
     const char *resource_dir = get_resource_dir();
     static char domterm_jar_name[] = "/domterm.jar";
     size_t djlen = strlen(resource_dir) + sizeof(domterm_jar_name);
     char *djbuf = challoc(djlen);
     snprintf(djbuf, djlen, "%s%s", resource_dir, domterm_jar_name);
     mount_domterm_zip.origin = djbuf;
-#endif
     info.mounts = &mount_domterm_zip;
+#endif
 
     const char *shell = getenv("SHELL");
     if (shell == NULL)
