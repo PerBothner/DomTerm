@@ -1927,8 +1927,12 @@ class DTParser {
             let semi = text.indexOf(';');
             if (semi >= 0) {
                 let data = text.substring(semi+1);
-                for (let i = 0; i < semi; i++) {
+                for (let i = 0; i < Math.max(semi, 1); i++) {
                     let where = text.charAt(i);
+                    if (where === ';') // no Pc parameter:
+                        where = 's';   // default according to XTerm.
+                    if (where === 's') // meaning of 's' is 'p' or 'c';
+                        where = 'p';   // default but configurable in xterm.
                     if (data == '?') { // get
                         let send_data = (text) => {
                             term.processResponseCharacters("\x1B]52;"+where
@@ -1942,6 +1946,7 @@ class DTParser {
                                 term.reportEvent("REQUEST-CLIPBOARD-TEXT", "OSC52");
                             else
                                 navigator.clipboard.readText().then(send_data);
+                            break;
                         } else if (where == 'p') { // get primary (selection)
                             if (! term.checkPermission("get-selection"))
                                 send_data("{get-selection not allowed}");
@@ -1949,6 +1954,7 @@ class DTParser {
                                 term.reportEvent("REQUEST-SELECTION-TEXT", "OSC52");
                             else
                                 send_data(Terminal._selectionAsText());
+                            break;
                         }
                     } else { // set
                         let str = atob(data);
