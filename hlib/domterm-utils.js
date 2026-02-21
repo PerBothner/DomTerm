@@ -83,6 +83,8 @@ const ELEMENT_KIND_SKIP_TAG_OR_FULLY = ELEMENT_KIND_SKIP_TAG+ELEMENT_KIND_SKIP_F
 
 //FIXME Study the following:
 //https://www.owasp.org/index.php/XSS_Filter_Evasion_Cheat_Sheet
+//FIXME perhaps use https://github.com/cure53/DOMPurify
+//FIXME perhaps use TrustedHTML API.
 
 // See elementInfo comment for bit values.
 const HTMLinfo = {
@@ -644,7 +646,7 @@ function allowAttribute(name, value, einfo, parents) {
 };
 
 export function isEmptyTag(tag) { // lowercase tag
-    return (elementInfo(tag, null) & ELEMENT_KIND_EMPTY) == 0;
+    return (elementInfo(tag, null) & ELEMENT_KIND_EMPTY) !== 0;
 }
 
 export function isBlockTag(tag) { // lowercase tag

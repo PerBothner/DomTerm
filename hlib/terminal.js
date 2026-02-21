@@ -6531,9 +6531,9 @@ Terminal._nodeToHtml = function(node, dt, saveMode) {
             string += s;
             if (!node.firstChild) {
                 if (DtUtil.isEmptyTag(tagName))
-                    string += '></'+tagName+'>';
-                else
                     string += '/>';
+                else
+                    string += '></'+tagName+'>';
             } else {
                 string += '>';
                 formatList(node.childNodes, isBreakingLine);
@@ -10841,12 +10841,14 @@ Terminal.prototype.editorMoveStartOrEndLine = function(toEnd, extend=false, logi
         this.sstate.goalX = 4; // FIXME
     this.editorMoveLines(! toEnd, "current", extend, logicalLines ? true : "smart");
     return;
+    /*
     let count = toEnd ? -Infinity : Infinity;
     if (extend)
         this.extendSelection(count, "grapheme", "line");
     else
         this.editMovePosition(count, "grapheme", "line");
-    this.sstate.goalX = undefined; // FIXME add other places
+        this.sstate.goalX = undefined; // FIXME add other places
+    */
 }
 
 Terminal.prototype.editorMoveStartOrEndInput = function(toEnd, action="move") {
