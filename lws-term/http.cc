@@ -233,13 +233,13 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
             const char* content_type = get_mimetype(fname);
             if (content_type == NULL)
               content_type = "text/html";
-
+            lwsl_notice("http %s type: %s\n", fname, content_type);
             const char saved_prefix[] = "/saved-file/";
             size_t saved_prefix_len = sizeof(saved_prefix)-1;
             const char get_prefix[] = "/get-file/";
             size_t get_prefix_len = sizeof(get_prefix)-1;
             bool is_saved_file =
-                !strncmp((const char *) in, saved_prefix, saved_prefix_len);
+                !strncmp(fname, saved_prefix, saved_prefix_len);
             if (is_saved_file
                 || !strncmp((const char *) in, get_prefix, get_prefix_len)) {
                 const char *rest = (const char *) in

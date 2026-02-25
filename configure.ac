@@ -311,6 +311,7 @@ case "$with_xterm_js" in
   "yes"|"git-clone") WITH_XTERMJS=1; XTERMJS_PATH=xtermjs;;
   *) WITH_XTERMJS=1;;
 esac
+test "$WITH_XTERMJS" = "1" && XTERMJS_ADDONS="fit image serialize unicode-graphemes web-links webgl"
 AM_CONDITIONAL(XTERMJS_FROM_NPM, test "$with_xterm_js" = "npm")
 
 dnl Files for "inner" JavaScript context
@@ -362,6 +363,7 @@ HLIB_FIXED_FILES_MISC="\
   hlib/xterminal.js \
   hlib/jsMenus.css"
 AC_SUBST(XTERMJS_PATH)
+AC_SUBST(XTERMJS_ADDONS)
 AC_SUBST(WITH_XTERMJS)
 AC_SUBST(HLIB_FIXED_FILES_INNER)
 AC_SUBST(HLIB_FIXED_FILES_OUTER)

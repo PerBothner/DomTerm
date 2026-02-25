@@ -659,7 +659,7 @@ DomTerm.makeElement = function(name, parent = DomTerm.layoutTop, useXtermJs = fa
         parent = topNode;
     }
     if (useXtermJs) {
-        let xterm = new window.Terminal();
+        let xterm = new window.XTerm();
         xterm.open(parent);
         if (DomTerm.isSubWindow())
             topNode = xterm.element;
@@ -801,7 +801,7 @@ DomTerm.connectWS = function(query, pane, topNode=null) {
         wt._reconnectCount = 0;
         wt._socketOpen = true;
         if (topNode !== null) {
-            if (DomTerm.usingXtermJs() && window.Terminal != undefined) {
+            if (DomTerm.usingXtermJs() && window.XTerm != undefined) {
                 //DomTerm.initXtermJs(wt, topNode);
                 // DomTerm.setFocus(wt, "N");
             } else {

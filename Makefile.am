@@ -355,10 +355,8 @@ recompile-sixel:
 
 if WITH_XTERMJS
 if XTERMJS_FROM_NPM
-XTERMJS_ADDONS = fit image serialize web-links webgl
-DOMTERM_JAR_EXTRA_DEPS = $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.js
+DOMTERM_JAR_EXTRA_DEPS = $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.mjs
 else
-XTERMJS_ADDONS = fit image serialize unicode-graphemes web-links webgl
 if ENABLE_DEBUG
 DOMTERM_JAR_EXTRA_DEPS = tmp-xterm-debug-built
 else
@@ -371,23 +369,23 @@ $(DOMTERM_JAR): classes.stamp $(MISC_COPY_TO_JAR) $(DOMTERM_JAR_EXTRA_DEPS)
 	$(MKDIR_P) $(domterm_jar_dir) tmp-for-jar
 	tar cf - $(PLAIN_COPY_TO_JAR) | (cd tmp-for-jar; tar xf -)
 if WITH_XTERMJS
-	$(MKDIR_P) tmp-for-jar/hlib/xterm
+	$(MKDIR_P) tmp-for-jar/hlib/xtermjs
 if XTERMJS_FROM_NPM
-	cp $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.js tmp-for-jar/hlib/xterm
+	cp $(NODE_MODULES_DIR)/@xterm/xterm/lib/xterm.mjs tmp-for-jar/hlib/xtermjs/
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(NODE_MODULES_DIR)/@xterm/addon-$$ADDON/lib/addon-$$ADDON.js tmp-for-jar/hlib/xterm/addon-$$ADDON.js; done
-	cp $(NODE_MODULES_DIR)/@xterm/xterm/css/xterm.css tmp-for-jar/hlib
+	  cp $(NODE_MODULES_DIR)/@xterm/addon-$$ADDON/lib/addon-$$ADDON.mjs tmp-for-jar/hlib/xtermjs/addon-$$ADDON.mjs; done
+	cp $(NODE_MODULES_DIR)/@xterm/xterm/css/xterm.css tmp-for-jar/hlib/xtermjs/
 else
 if ENABLE_DEBUG
-	cp $(XTERMJS_ROOT)/debug-lib/xterm.js  $(XTERMJS_ROOT)/debug-lib/xterm.js.map tmp-for-jar/hlib/xterm
+	cp $(XTERMJS_ROOT)/debug-lib/xterm.mjs $(XTERMJS_ROOT)/debug-lib/xterm.mjs.map tmp-for-jar/hlib/xtermjs/
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.js $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.js.map tmp-for-jar/hlib/xterm/; done
+	  cp $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.mjs $(XTERMJS_ROOT)/debug-lib/addon-$$ADDON.mjs.map tmp-for-jar/hlib/xtermjs/; done
 else
-	cp $(XTERMJS_ROOT)/lib/xterm.js tmp-for-jar/hlib
+	cp $(XTERMJS_ROOT)/lib/xterm.mjs tmp-for-jar/hlib/xtermjs/
 	for ADDON in $(XTERMJS_ADDONS); do \
-	  cp $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/$$ADDON.js $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/$$ADDON.js.map tmp-for-jar/hlib/xterm/; done
+	  cp $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/addon-$$ADDON.mjs $(XTERMJS_ADDONS_ROOT)/addon-$$ADDON/lib/addon-$$ADDON.mjs.map tmp-for-jar/hlib/xtermjs/; done
 endif
-	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib
+	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib/xtermjs/
 endif
 endif
 if WITH_JAVA
@@ -729,7 +727,7 @@ xtermjs:
 	git clone git@github.com:xtermjs/xterm.js.git xtermjs
 
 tmp-xterm-built: $(XTERMJS_ROOT)
-	cd $(XTERMJS_ROOT) && yarn && yarn setup && npm run package
+	cd $(XTERMJS_ROOT) && npm run setup && npm run tsc && npm run esbuild
 	for ADDON in $(XTERMJS_ADDONS); do \
 	  (cd $(XTERMJS_ROOT)/addons/addon-$$ADDON && npm run package); done
 	touch tmp-xterm-built

@@ -34,10 +34,8 @@ LWS_RESOURCES = hlib/dt-combined.js hlib/dt-outer.js $(HLIB_FIXED_FILES_MISC) hl
 else
 LWS_RESOURCES = $(HLIB_FIXED_FILES_INNER) $(HLIB_FIXED_FILES_OUTER) $(HLIB_FIXED_FILES_MISC) hlib/domterm-version.js
 endif
-XTERMJS_RESOURCES_SOURCE = $(XTERMJS_PATH)/xterm.js \
-  $(XTERMJS_PATH)/xterm.css $(XTERMJS_PATH)/addons/fit/fit.js
-XTERMJS_RESOURCES = hlib/xterm.js hlib/xterm.css hlib/fit.js
 if WITH_XTERMJS
+XTERMJS_RESOURCES = hlib/xtermjs/xterm.mjs hlib/xtermjs/xterm.css `for addon in @XTERMJS_ADDONS@; do echo hlib/xtermjs/addon-$$addon.mjs; done`
 LWS_RESOURCES += $(XTERMJS_RESOURCES)
 endif
 if ENABLE_COMPILED_IN_RESOURCES
@@ -53,11 +51,14 @@ ldomterm_CXXFLAGS += -DUSE_DOCK_MANAGER=1 $(QT_DOCKING_CFLAGS) -DQT_DOCKING_LIBD
 endif
 XXD = xxd
 CLEANFILES = resources.cc git-describe.c xterm.stamp \
-  ../hlib/xterm.js ../hlib/xterm.css ../hlib/fit.js ../bin/domterm$(EXEEXT)
+  ../hlib/xtermjs/*.mjs ../hlib/xtermjs/xterm.css ../hlib/fit.js ../bin/domterm$(EXEEXT)
 
+XTERMJS_RESOURCES_SOURCE =$(XTERMJS_PATH)/addons/addon-fit/lib/addon-fit.mjs
 xterm.stamp:
 if WITH_XTERMJS
-	cd ../hlib && $(LN_S) $(XTERMJS_RESOURCES_SOURCE) .
+	$(MKDIR_P) ../hlib/xtermjs
+	cd ../hlib/xtermjs && $(LN_S) $(XTERMJS_PATH)/lib/xterm.mjs \
+  $(XTERMJS_PATH)/css/xterm.css `for addon in @XTERMJS_ADDONS@; do echo $(XTERMJS_PATH)/addons/addon-$$addon/lib/addon-$$addon.mjs; done` .
 endif
 	touch xterm.stamp
 

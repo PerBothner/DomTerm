@@ -1,15 +1,14 @@
 import { Terminal as DTerminal } from './terminal.js';
 import * as DtUtil from './domterm-utils.js';
+import { Terminal as XTerm } from './xtermjs/xterm.mjs';
+import { FitAddon } from './xtermjs/addon-fit.mjs';
+import { WebLinksAddon } from './xtermjs/addon-web-links.mjs';
+import { WebglAddon } from './xtermjs/addon-webgl.mjs';
+import { UnicodeGraphemesAddon } from './xtermjs/addon-unicode-graphemes.mjs';
 
-const XTerm = window.Terminal;
-const FitAddon = window.FitAddon.FitAddon;
-const WebLinksAddon = window.WebLinksAddon.WebLinksAddon;
-//Not available in xterm.js 5.5.0, which is current NPM version.
-//const UnicodeProvider = window.UnicodeGraphemesAddon.UnicodeGraphemesAddon);
-const ImageAddon = window.ImageAddon.ImageAddon;
+//const ImageAddon = window.ImageAddon.ImageAddon;
 //The following doesn't work - see https://github.com/xtermjs/xterm.js/issues/4424
 //const SerializeAddon = SerializeAddon.SerializeAddon;
-const WebglAddon = window.WebglAddon.WebglAddon;
 
 // customize as needed (showing addon defaults)
 const imageCustomSettings = {
@@ -77,10 +76,9 @@ class XTermPane extends DTerminal {
         };
         this.fitAddon = new FitAddon();
         this.webLinksAddon = new WebLinksAddon(this.activateLink, this.linkHandler);
-        this.serializeAddon = new SerializeAddon.SerializeAddon();
-        if (window.UnicodeGraphemesAddon)
-            this.unicodeProvider = new window.UnicodeGraphemesAddon.UnicodeGraphemesAddon();
-        this.imageAddon = new ImageAddon(imageCustomSettings);
+        //this.serializeAddon = new SerializeAddon();
+        this.unicodeProvider = new UnicodeGraphemesAddon();
+        //this.imageAddon = new ImageAddon(imageCustomSettings);
     }
     initializeTerminal(_topNode) {
         this.rendererType = DTerminal.defaultXtRendererType;
@@ -220,8 +218,8 @@ class XTermPane extends DTerminal {
 
         xterm.loadAddon(this.fitAddon);
         xterm.loadAddon(this.webLinksAddon);
-        xterm.loadAddon(this.imageAddon);
-        xterm.loadAddon(this.serializeAddon);
+        //xterm.loadAddon(this.imageAddon);
+        //xterm.loadAddon(this.serializeAddon);
         this.fitAddon.fit();
         if (this.unicodeProvider)
             xterm.loadAddon(this.unicodeProvider);
@@ -372,3 +370,4 @@ class XTermPane extends DTerminal {
     }
 }
 window.XTermPane = XTermPane;
+window.XTerm = XTerm;

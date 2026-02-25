@@ -225,14 +225,25 @@ static const struct lws_extension extensions[] = {
 #define ZIP_MOUNT "/"
 
 static struct lws_protocol_vhost_options extra_mimetypes0 = {
-    NULL, NULL, ".js.map", "application/json"
+    .next = nullptr,
+    .options = nullptr,
+    .name = ".js.map",
+    .value = "application/json"
+};
+
+static struct lws_protocol_vhost_options extra_mimetypes1 = {
+    .next = &extra_mimetypes0,
+    .options = nullptr,
+    .name = ".mjs.map",
+    .value = "application/json"
 };
 
 static struct lws_protocol_vhost_options extra_mimetypes = {
-    &extra_mimetypes0, NULL, ".mjs", "text/javascript"
+    .next = &extra_mimetypes1,
+    .options = nullptr,
+    .name = ".mjs",
+    .value = "text/javascript"
 };
-
-
 
 static struct lws_http_mount mount_domterm_zip = {
     .mountpoint = ZIP_MOUNT,
@@ -1226,7 +1237,7 @@ static struct lib_info standard_stylesheets[] = {
     {"hlib/jsMenus.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/domterm-layout.css", LIB_WHEN_OUTER },
     {"hlib/domterm-default.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm.css", LIB_WHEN_XTERMJS},
+    {"hlib/xtermjs/xterm.css", LIB_WHEN_XTERMJS},
     {NULL, 0},
 };
 
@@ -1252,13 +1263,14 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/jsMenus.js", LIB_WHEN_OUTER|LIB_WHEN_XTERMJS},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
-    {"hlib/xterm/xterm.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm/addon-fit.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm/addon-image.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm/addon-serialize.js", LIB_WHEN_XTERMJS},
-    {"hlib/xterm/addon-web-links.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm/addon-unicode-graphemes.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/xterm/addon-webgl.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xtermjs/xterm.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xtermjs/addon-fit.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xtermjs/addon-image.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    // ERROR: "export declarations may only appear at top level of a module" ???
+    //{"hlib/xtermjs/addon-serialize.mjs", LIB_WHEN_XTERMJS},
+    {"hlib/xtermjs/addon-web-links.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xtermjs/addon-unicode-graphemes.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/xtermjs/addon-webgl.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterminal.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     //{"hlib/fit.js", LIB_WHEN_XTERMJS},
