@@ -1450,9 +1450,9 @@ reportEvent(const char *name, char *data, size_t dlen,
             client->unlink_main_html_filename();
         else
             options->print_browser_only = false;
+        client->initialized = 0;
         if (strcmp(name, "VERSION") == 0)
             return true;
-        client->initialized = 0;
         if (proxyMode == proxy_display_local)
             return false;
         if (pclient == NULL) {
@@ -2294,9 +2294,21 @@ callback_tty(struct lws *wsi, enum lws_callback_reasons reason,
         if (no_session && strcmp(no_session, "top") == 0
             && main_window == 0 && main_windows.valid_index(wnum) ) {
             client = main_windows[wnum];
-            client->wkind = main_only_window;
-            if (tty_clients(wnum) == client)
-                tty_clients.remove(client);
+            if (client->wkind == browser_window && client == tty_clients[wnum]) {
+                struct tty_client *tclient = client;
+                client = new tty_client();
+                tclient->main_window = wnum;
+                lws_callback_on_writable(wsi);
+                main_windows[wnum] = client;
+                if (tclient->version_info)
+                    client->version_info = strdup(tclient->version_info);
+                client->options = link_options(tclient->options);
+                client->connection_number = wnum;
+            } else {
+                client->wkind = main_only_window;
+                if (tty_clients(wnum) == client)
+                    tty_clients.remove(client);
+            }
         } else if (wnum >= 0) {
             if (tty_clients.valid_index(wnum))
                 client = tty_clients[wnum];

@@ -83,7 +83,7 @@ class id_table {
 public:
     T* first() { return elements == nullptr ? nullptr : elements[1]; }
     T* next(T* entry) { return elements[entry->index()+1]; }
-    T* operator[](int i) { return elements[i]; } // fast/unsafe lookup
+    T*& operator[](int i) { return elements[i]; } // fast/unsafe lookup
     int enter(T* entry, int hint);
     void remove(T* entry);
     bool valid_index(int i) {
@@ -252,7 +252,7 @@ public:
     struct lws *wsi;
     struct lws *out_wsi;
 
-    // -1; start start; 0: Not initialized, VERSION received; 2: initialized
+    // -1; start state; 0: Not initialized, VERSION received; 2: initialized
     // 1: reconnecting - client has state, but connection was dropped
     int initialized : 3;
 

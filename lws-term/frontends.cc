@@ -863,8 +863,9 @@ display_session(struct options *options, struct pty_client *pclient,
     int r = EXIT_SUCCESS;
 
     if (paneOp > 0) {
+        int main_window = wclient->main_window;
         tclient->main_window =
-            wclient->main_window || wclient->connection_number;
+            main_window > 0 ? main_window : wclient->connection_number;
         json pane_options;
         if (wnum >= 0)
             pane_options["windowNumber"] = wnum;
