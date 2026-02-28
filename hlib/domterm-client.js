@@ -598,13 +598,9 @@ function loadHandler(event) {
                              componentState: cstate };
            DomTerm._initialLayoutConfig = config;
         }
-        let topNodes = [];
-        topNodes = document.getElementsByClassName("domterm");
-        if (topNodes.length == 0)
-            topNodes = document.getElementsByClassName("domterm-wrapper");
         if (layoutInitAlways && ! DomTerm.isSubWindow()) {
             DomTerm.withLayout((m) => { m.initialize([DomTerm._initialLayoutConfig]); });
-        } else if (topNodes.length == 0) {
+        } else {
             let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
             let parent = DomTerm.layoutTop;
             // only needed if we might use DnD setDragImage
@@ -616,6 +612,13 @@ function loadHandler(event) {
             }
             let el;
             const mode = no_session === "browse" ? 'B' : 'T';
+            if (no_session === "view-saved")
+                query = browse_param;
+            else if (DomTerm.mainTerm?.kind === "top")
+                query += "&main-window="+DomTerm._mainWindowNumber;
+            else
+                query += "&main-window=true";
+            const pane = PaneInfo.create(mwinnum, useXtermJs ? "xterminal" : "dterminal");
             if ((DomTerm.useIFrame == 2 || mode === 'B')
                 && ! DomTerm.isSubWindow()) {
                 if (snum)
@@ -632,32 +635,13 @@ function loadHandler(event) {
                 paneParams.delete('session-number');
                 paneParams.delete('window');
                 DomTerm.mainLocationParams = paneParams.toString();
+                pane.contentElement = el;
+                el.paneInfo = pane;
+                DomTerm.focusedPane = pane;
+                DomTerm._contentElement = el;
+                DomTerm.updateSizeFromBody();
             } else {
-                el = DomTerm.makeElement(name, parent, useXtermJs);
-                if (DomTerm.mainTerm?.kind === "top")
-                    query += "&main-window="+DomTerm._mainWindowNumber;
-                else
-                    query += "&main-window=true";
-            }
-            const pane = PaneInfo.create(mwinnum, useXtermJs ? "xterminal" : "dterminal");
-            pane.contentElement = el;
-            el.paneInfo = pane;
-            DomTerm.focusedPane = pane;
-            topNodes = [ el ];
-            DomTerm._contentElement = el;
-            DomTerm.updateSizeFromBody();
-        }
-        if (location.search.search(/wait/) >= 0) {
-        } else if (! no_session || no_session === "view-saved") {
-            for (var i = 0; i < topNodes.length; i++) {
-                const top = topNodes[i];
-                if (no_session === "view-saved") {
-                    Terminal.loadSavedFile(top, browse_param);
-                } else {
-                    DomTerm.connectWS(query, top.paneInfo, top);
-                }
-                DomTerm.maybeWindowName(top);
-            }
+                DomTerm.makeTerminal(name, pane, query, parent, useXtermJs);            }
         }
         DomTerm.layoutBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
     }

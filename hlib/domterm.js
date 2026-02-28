@@ -649,7 +649,7 @@ DomTerm.updateSettings = function(pane, context) {
     }
 }
 
-DomTerm.makeElement = function(name, parent = DomTerm.layoutTop, useXtermJs = false) {
+DomTerm.makeTerminal = function(name, paneInfo, query, parent = DomTerm.layoutTop, useXtermJs = false) {
     let topNode;
     if (! useXtermJs || ! DomTerm.isSubWindow()) {
         topNode = document.createElement("div");
@@ -658,18 +658,29 @@ DomTerm.makeElement = function(name, parent = DomTerm.layoutTop, useXtermJs = fa
         parent.appendChild(topNode);
         parent = topNode;
     }
-    if (useXtermJs) {
-        let xterm = new window.XTerm();
-        xterm.open(parent);
-        if (DomTerm.isSubWindow())
-            topNode = xterm.element;
-        topNode.xterm = xterm;
+    const afterInit = () => {
+        if (useXtermJs) {
+            let xterm = new window.XTerm();
+            xterm.open(parent);
+            if (DomTerm.isSubWindow())
+                topNode = xterm.element;
+            topNode.xterm = xterm;
+        }
+        topNode.classList.add("domterm");
+        topNode.setAttribute("name", name);
+        if (DomTerm._oldFocusedContent == null)
+            DomTerm._oldFocusedContent = topNode;
+        paneInfo.contentElement = topNode;
+        topNode.paneInfo = paneInfo;
+        DomTerm.focusedPane = paneInfo;
+        if (paneInfo.kind === "view-saved") {
+            Terminal.loadSavedFile(topNode, query);
+        } else {
+            DomTerm.connectWS(query, paneInfo, topNode);
+        }
+        DomTerm.maybeWindowName(top);
     }
-    topNode.classList.add("domterm");
-    topNode.setAttribute("name", name);
-    if (DomTerm._oldFocusedContent == null)
-        DomTerm._oldFocusedContent = topNode;
-    return topNode;
+    afterInit();
 }
 
 DomTerm._makeWsUrl = function(query=null) {
@@ -806,8 +817,12 @@ DomTerm.connectWS = function(query, pane, topNode=null) {
                 // DomTerm.setFocus(wt, "N");
             } else {
                 wt._handleSavedLog();
-                if (topNode.classList.contains("domterm-wrapper"))
-                    topNode = DomTerm.makeElement(name, topNode, useXtermJs);
+                if (topNode.classList.contains("domterm-wrapper")) {
+                    const el = document.createElement("div");
+                    el.setAttribute("name", name);
+                    topNode.appendChild(el);
+                    topNode = el;
+                }
             }
             pane.initializeTerminal(topNode);
         } else if (! DomTerm.isInIFrame()) {

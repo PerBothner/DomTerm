@@ -429,23 +429,14 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
         }
     } else {
         pane = PaneInfo.create(cstate.windowNumber, ptype);
-        let name = DomTerm.freshName();
-        let el = DomTerm.makeElement(name, parent, ctype=== "xterminal");
-        wrapped = el;
-        pane.contentElement = wrapped;
-        wrapped.paneInfo = pane;
-        wrapped.name = name;
-        if (DomTerm.mainTerm && DomTerm._mainWindowNumber >= 0)
+        if (ctype === "view-saved")
+            query = cstate.url;
+        else if (DomTerm.mainTerm && DomTerm._mainWindowNumber >= 0)
             query += `&main-window=${DomTerm._mainWindowNumber}`;
         else
             query += "&main-window=true";
-        el.query = query;
-        DomTerm.maybeWindowName(el, new URLSearchParams(query));
-        if (ctype === "view-saved") {
-            DTerminal.loadSavedFile(el, cstate.url);
-        } else {
-            DomTerm.connectWS(query, pane, el);
-        }
+        let name = DomTerm.freshName();
+        DomTerm.makeTerminal(name, pane, query, parent, ctype=== "xterminal");
     }
     if (wrapped) {
         wrapped.paneNumber = paneNumber;
