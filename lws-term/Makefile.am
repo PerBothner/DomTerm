@@ -38,6 +38,10 @@ if WITH_XTERMJS
 XTERMJS_RESOURCES = hlib/xtermjs/xterm.mjs hlib/xtermjs/xterm.css `for addon in @XTERMJS_ADDONS@; do echo hlib/xtermjs/addon-$$addon.mjs; done`
 LWS_RESOURCES += $(XTERMJS_RESOURCES)
 endif
+if WITH_GHOSTTY
+GHOSTTY_RESOURCES = hlib/ghostty-web.js __vite-browser-external-2447137e.js
+LWS_RESOURCES += $(GHOSTTY_RESOURCES)
+endif
 if ENABLE_COMPILED_IN_RESOURCES
 nodist_ldomterm_SOURCES += resources.cc
 ldomterm_CXXFLAGS += -DCOMPILED_IN_RESOURCES
@@ -53,7 +57,7 @@ XXD = xxd
 CLEANFILES = resources.cc git-describe.c xterm.stamp \
   ../hlib/xtermjs/*.mjs ../hlib/xtermjs/xterm.css ../hlib/fit.js ../bin/domterm$(EXEEXT)
 
-XTERMJS_RESOURCES_SOURCE =$(XTERMJS_PATH)/addons/addon-fit/lib/addon-fit.mjs
+XTERMJS_RESOURCES_SOURCE = $(XTERMJS_PATH)/addons/addon-fit/lib/addon-fit.mjs
 xterm.stamp:
 if WITH_XTERMJS
 	$(MKDIR_P) ../hlib/xtermjs

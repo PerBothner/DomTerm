@@ -130,7 +130,7 @@ DomTerm._settingsCounter = -1;
 
 //DomTerm.isInIFrame = function() { return window.parent != window; }
 DomTerm.isInIFrame = function() { return DomTerm.isSubWindow(); }
-DomTerm.isSubWindow = function() { const p = location.pathname; return p === "/simple.html" || p === "/xtermjs.html"; }
+DomTerm.isSubWindow = function() { const p = location.pathname; return p === "/simple.html" || p === "/xtermjs.html" || p === "/ghostty.html"; }
 
 DomTerm.usingQtWebEngine = !!navigator.userAgent.match(/QtWebEngine[/]([^ ]+)/);
 
@@ -649,8 +649,10 @@ DomTerm.updateSettings = function(pane, context) {
     }
 }
 
-DomTerm.makeTerminal = function(name, paneInfo, query, parent = DomTerm.layoutTop, useXtermJs = false) {
+DomTerm.makeTerminal = function(name, paneInfo, query, parent = DomTerm.layoutTop) {
     let topNode;
+    const useXtermJs = paneInfo.kind === "xterminal";
+    const useGhostty = paneInfo.kind === "ghterminal";
     if (! useXtermJs || ! DomTerm.isSubWindow()) {
         topNode = document.createElement("div");
         if (DomTerm.subwindows)
@@ -658,9 +660,9 @@ DomTerm.makeTerminal = function(name, paneInfo, query, parent = DomTerm.layoutTo
         parent.appendChild(topNode);
         parent = topNode;
     }
-    const afterInit = () => {
-        if (useXtermJs) {
-            let xterm = new window.XTerm();
+    const afterInit = (val) => {
+        if (useXtermJs || useGhostty) {
+            let xterm = useGhostty ? new val() : new window.XTerm();
             xterm.open(parent);
             if (DomTerm.isSubWindow())
                 topNode = xterm.element;
@@ -680,7 +682,11 @@ DomTerm.makeTerminal = function(name, paneInfo, query, parent = DomTerm.layoutTo
         }
         DomTerm.maybeWindowName(top);
     }
-    afterInit();
+    if (useGhostty) {
+        window.ghInitialized.then(afterInit);
+    } else {
+        afterInit(undefined);
+    }
 }
 
 DomTerm._makeWsUrl = function(query=null) {
@@ -802,7 +808,8 @@ DomTerm.connectWS = function(query, pane, topNode=null) {
     const no_session = pane.kind;
     const wspath = DomTerm._makeWsUrl(query);
     const useXtermJs = no_session === "xterminal";
-    if (useXtermJs)
+    const useGhostty = no_session === "ghterminal";
+    if (useXtermJs || useGhostty)
         pane.terminal = topNode.xterm;
     else
         pane.setupElements(topNode);
@@ -812,7 +819,8 @@ DomTerm.connectWS = function(query, pane, topNode=null) {
         wt._reconnectCount = 0;
         wt._socketOpen = true;
         if (topNode !== null) {
-            if (DomTerm.usingXtermJs() && window.XTerm != undefined) {
+            if ((DomTerm.usingXtermJs() && window.XTerm != undefined)
+                || DomTerm.usingGhostty()) {
                 //DomTerm.initXtermJs(wt, topNode);
                 // DomTerm.setFocus(wt, "N");
             } else {
@@ -852,8 +860,9 @@ class PaneInfo {
             DomTerm.paneMap[windowNumber] = this;
 
         /** One of "dterminal" (domterm terminal) or "domterm" (legacy name);
-         * "xterminal" (xterm.js-based terminal); "top" (top container);
-         * "browser" or "view-saved". */
+         * "xterminal" (xterm.js-based terminal);
+         * "ghterminal" (based on ghostty-web);
+         * "top" (top container); "browser" or "view-saved". */
         this.kind = kind;
         /** The ComponentItem for this pane if using GoldenLayout. */
         this.layoutItem = undefined;
@@ -907,6 +916,8 @@ class PaneInfo {
 PaneInfo.create = function(windowNumber, kind) {
     if (kind == "xterminal" && window.XTermPane != undefined)
         return new window.XTermPane(windowNumber);
+    else if (kind == "ghterminal" && window.GhTermPane != undefined)
+        return new window.GhTermPane(windowNumber);
     else if (kind === "dterminal" || kind === "xterminal" || kind == "top" || kind == "browse")
         return new DTerminal(windowNumber, kind);
     else

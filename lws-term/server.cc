@@ -1229,40 +1229,42 @@ struct lib_info {
 };
 
 static struct lib_info standard_stylesheets[] = {
-    {"hlib/domterm-core.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/domterm-standard.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-core.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
+    {"hlib/domterm-standard.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
     {"hlib/goldenlayout/css/goldenlayout-base.css", LIB_WHEN_OUTER},
     {"hlib/goldenlayout/css/themes/goldenlayout-light-theme.css", LIB_WHEN_OUTER},
     {"hlib/goldenlayout/css/themes/goldenlayout-dark-theme.css", LIB_WHEN_OUTER|LIB_CSS_DISABLED},
     {"hlib/jsMenus.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE},
     {"hlib/domterm-layout.css", LIB_WHEN_OUTER },
-    {"hlib/domterm-default.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-default.css", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
     {"hlib/xtermjs/xterm.css", LIB_WHEN_XTERMJS},
     {NULL, 0},
 };
 
 static struct lib_info standard_jslibs[] = {
-    {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/settings-manager.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
+    {"hlib/domterm-version.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
+    {"hlib/settings-manager.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
+    {"hlib/domterm.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
 #if COMBINE_RESOURCES
     {"hlib/dt-combined.js", LIB_WHEN_SIMPLE},
 #else
-    {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/terminal.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
     {"hlib/domterm-parser.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE},
-    {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/mark.es6.js", LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS},
-    {"hlib/domterm-findtext.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/browserkeymap.js", LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
+    {"hlib/commands.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
+    {"hlib/mark.es6.js", LIB_WHEN_SIMPLE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
+    {"hlib/domterm-findtext.js", LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
     {"hlib/FileSaver.js", LIB_WHEN_SIMPLE},
 #endif
 #if COMBINE_RESOURCES
     {"hlib/dt-outer.js", LIB_WHEN_OUTER},
 #else
     {"hlib/domterm-menus.js", LIB_WHEN_OUTER},
-    {"hlib/jsMenus.js", LIB_WHEN_OUTER|LIB_WHEN_XTERMJS},
+    {"hlib/jsMenus.js", LIB_WHEN_OUTER|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
     {"hlib/screenfull.js", LIB_WHEN_OUTER},
 #endif
+    {"hlib/ghostty-web.js", LIB_AS_MODULE|LIB_WHEN_GHOSTTY},
+    {"hlib/__vite-browser-external-2447137e.js", LIB_AS_MODULE|LIB_WHEN_GHOSTTY},
     {"hlib/xtermjs/xterm.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xtermjs/addon-fit.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xtermjs/addon-image.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
@@ -1272,7 +1274,8 @@ static struct lib_info standard_jslibs[] = {
     {"hlib/xtermjs/addon-unicode-graphemes.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xtermjs/addon-webgl.mjs", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
     {"hlib/xterminal.js", LIB_AS_MODULE|LIB_WHEN_XTERMJS},
-    {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS},
+    {"hlib/ghterminal.js", LIB_AS_MODULE|LIB_WHEN_GHOSTTY},
+    {"hlib/domterm-client.js", LIB_WHEN_OUTER|LIB_WHEN_SIMPLE|LIB_AS_MODULE|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY},
     //{"hlib/fit.js", LIB_WHEN_XTERMJS},
     {NULL, 0},
 };
@@ -1293,16 +1296,18 @@ make_html_text(struct sbuf *obuf, int port, int hoptions,
                  base);
     struct lib_info *lib;
     for (lib = standard_stylesheets; lib->file != NULL; lib++) {
-        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER|LIB_WHEN_XTERMJS)) != 0)
+        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY)) != 0)
             obuf->printf("<link type='text/css' rel='stylesheet' href='%s'%s>\n",
                          lib->file,
                          lib->options & LIB_CSS_DISABLED ? " disabled='true'" : "");
     }
     for (lib = standard_jslibs; lib->file != NULL; lib++) {
         const char *jstype = (lib->options & LIB_AS_MODULE) ? "module" : "text/javascript";
-        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER|LIB_WHEN_XTERMJS)) != 0)
+        if ((hoptions & lib->options & (LIB_WHEN_SIMPLE|LIB_WHEN_OUTER|LIB_WHEN_XTERMJS|LIB_WHEN_GHOSTTY)) != 0) {
+            lwsl_notice("script '%s' hopt:%d lib-opt:%d\n", lib->file, hoptions, lib->options);
             obuf->printf("<script type='%s' src='%s'> </script>\n",
                          jstype, lib->file);
+        }
     }
     if ((hoptions & LIB_WHEN_QT) != 0)
         obuf->printf("<script type='text/javascript' src='qrc:///qtwebchannel/qwebchannel.js'> </script>\n");

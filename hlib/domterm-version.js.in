@@ -56,3 +56,6 @@ DomTerm.isMac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform)
 DomTerm.usingXtermJs = function() {
     return location.pathname.indexOf("xtermjs") > 0;
 }
+DomTerm.usingGhostty = function() {
+    return location.pathname.indexOf("ghostty") > 0;
+}

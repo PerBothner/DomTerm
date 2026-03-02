@@ -6802,7 +6802,7 @@ Terminal.prototype.pushControlState = function() {
     }
     this._deferredBytes = undefined;
     this._savedControlState = saved;
-    if (! DomTerm.usingXtermJs())
+    if (! DomTerm.usingXtermJs() && ! DomTerm.usingGhostty())
         this.parser.pushControlState(saved);
 }
 Terminal.prototype.popControlState = function() {
@@ -6810,7 +6810,7 @@ Terminal.prototype.popControlState = function() {
     if (saved) {
         this._savedControlState = saved._savedControlState;
         this._deferredBytes = saved.deferredBytes;
-        if (! DomTerm.usingXtermJs()) {
+        if (! DomTerm.usingXtermJs() && ! DomTerm.usingGhostty()) {
             this.parser.popControlState(saved);
         }
         // Control sequences in "urgent messages" don't count to

@@ -103,6 +103,7 @@ NODE_MODULES_DIR = $(NODE_MODULES_PARENT)/lib/node_modules
 #XTERMJS_ADDONS_ROOT = $(NODE_MODULES_PARENT)/node_modules
 XTERMJS_ROOT = @XTERMJS_PATH@
 XTERMJS_ADDONS_ROOT = $(XTERMJS_ROOT)/addons
+GHOSTTY_ROOT = @GHOSTTY_PATH@
 NPM = npm
 
 ADOC_GENERATED = \
@@ -387,6 +388,9 @@ else
 endif
 	cp $(XTERMJS_ROOT)/css/xterm.css tmp-for-jar/hlib/xtermjs/
 endif
+endif
+if WITH_GHOSTTY
+	cp $(GHOSTTY_ROOT)/dist/ghostty-web.js $(GHOSTTY_ROOT)/dist/__vite-browser-external-2447137e.js tmp-for-jar/hlib/
 endif
 if WITH_JAVA
 	cd tmp-for-jar && \

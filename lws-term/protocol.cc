@@ -523,7 +523,7 @@ tty_client::link_pclient(struct pty_client *pclient)
     this->pclient = pclient; // sometimes redundant
     *pclient->last_tclient_ptr = this;
     pclient->last_tclient_ptr = &this->next_tclient;
-    this->wkind = pclient->use_xtermjs ? xterminal_window : dterminal_window;
+    this->wkind = pclient->use_xtermjs ? xterminal_window : pclient->use_ghostty ? ghterminal_window : dterminal_window;
 }
 
 void link_command(struct lws *wsi, struct tty_client *tclient,
@@ -683,6 +683,7 @@ request_enter(struct options *opts, tty_client* tclient)
 pty_client::pty_client()
 {
     use_xtermjs = false;
+    use_ghostty = false;
     pid = -1;
     nrows = -1;
     ncols = -1;
@@ -702,7 +703,7 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     struct lws *outwsi;
     int master;
     int slave;
-    bool packet_mode = false, use_xtermjs = false;
+    bool packet_mode = false, use_xtermjs = false, use_ghostty = false;;
 
     if (openpty(&master, &slave,NULL, NULL, NULL)) {
         lwsl_err("openpty\n");
@@ -717,11 +718,18 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
         use_xtermjs = true;
     }
 #endif
+#if WITH_GHOSTTY
+    std::string ghostty_opt = get_setting_s(opts->settings, "ghostty", "false");
+    int ghostty_value = bool_value(ghostty_opt.c_str());
+    if (ghostty_value > 0) {
+        use_ghostty = true;
+    }
+#endif
     fcntl(master, F_SETFD, FD_CLOEXEC);
     fcntl(slave, F_SETFD, FD_CLOEXEC);
 #if USE_PTY_PACKET_MODE
     if (! ssh_remoting
-        && ! use_xtermjs // for now
+        && ! use_xtermjs && ! use_ghostty // for now
         && ! (opts->tty_packet_mode
               && strcmp(opts->tty_packet_mode, "no") == 0)) {
         int nonzero = 1;
@@ -749,6 +757,7 @@ create_pclient(const char *cmd, arglist_t argv, struct options *opts,
     pclient->ttyname = tname;
     pclient->uses_packet_mode = packet_mode;
     pclient->use_xtermjs = use_xtermjs;
+    pclient->use_ghostty = use_ghostty;
     tserver.session_count++;
 
     int hint = t_hint ? t_hint->connection_number : -1;
@@ -853,7 +862,7 @@ run_command(const char *cmd, arglist_t argv, const char*cwd,
             sbuf rdbuf;
             rdbuf.printf("DOMTERM_RESOURCE_DIR=%s", get_resource_dir());
             put_to_env_array(nenv, env_max, rdbuf.strdup());
-            if (pclient->use_xtermjs) {
+            if (pclient->use_xtermjs || pclient->use_ghostty) {
                 put_to_env_array(nenv, env_max, "TERM=xterm-256color");
             } else {
                 put_to_env_array(nenv, env_max, "TERM=xterm-domterm");
@@ -1359,6 +1368,8 @@ open_window(const char *data, struct options *options)
             npclient = create_pclient(cmd, argv, options, false, nullptr);
             if (npclient && npclient->use_xtermjs)
                 wkind = xterminal_window;
+            else if (npclient && npclient->use_ghostty)
+                wkind = ghterminal_window;
         }
     }
     display_session(options, npclient, url, wkind);
@@ -2124,6 +2135,7 @@ handle_output(struct tty_client *client,  enum proxy_mode proxyMode, bool to_pro
         lwsl_notice("- empty pclient buf:%d for %p\n", client->ob.buffer != NULL, client);
     if (! pclient
         && (client->wkind == dterminal_window
+            || client->wkind == ghterminal_window
             || client->wkind == xterminal_window)
         && client->ob.buffer != NULL
         && proxyMode != proxy_command_local) {

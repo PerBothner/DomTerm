@@ -35,6 +35,8 @@ AC_ARG_WITH(java,
 
 AC_ARG_WITH(xterm.js,
   AS_HELP_STRING(--with-xterm.js=/path/to/xterm.js/build))
+AC_ARG_WITH(ghostty,
+  AS_HELP_STRING(--with-/path/to/ghostty-web))
 
 AC_ARG_WITH(java_websocket,
   AS_HELP_STRING(--with-java_websocket@<:@=/path/to/java_websocket.jar@:>@,Build server using Java-WebServer))
@@ -314,6 +316,16 @@ esac
 test "$WITH_XTERMJS" = "1" && XTERMJS_ADDONS="fit image serialize unicode-graphemes web-links webgl"
 AM_CONDITIONAL(XTERMJS_FROM_NPM, test "$with_xterm_js" = "npm")
 
+AM_CONDITIONAL(WITH_GHOSTTY,
+    test "$with_ghostty" != "" -a "$with_ghostty" != "no")
+GHOSTTY_PATH="$with_ghostty"
+case "$with_ghostty" in
+  ""|"no") WITH_GHOSTTY=0;;
+  "npm" ) WITH_GHOSTTY=1 ;;
+  "yes"|"git-clone") WITH_GHOSTTY=1; GHOSTTY_PATH=ghostty;;
+  *) WITH_GHOSTTY=1;;
+esac
+
 dnl Files for "inner" JavaScript context
 HLIB_FIXED_FILES_INNER="\
   hlib/browserkeymap.js \
@@ -361,10 +373,13 @@ HLIB_FIXED_FILES_MISC="\
   hlib/goldenlayout/img/lm_popin_white.png \
   hlib/macos-traffic-lights.css \
   hlib/xterminal.js \
+  hlib/ghterminal.js \
   hlib/jsMenus.css"
 AC_SUBST(XTERMJS_PATH)
 AC_SUBST(XTERMJS_ADDONS)
 AC_SUBST(WITH_XTERMJS)
+AC_SUBST(GHOSTTY_PATH)
+AC_SUBST(WITH_GHOSTTY)
 AC_SUBST(HLIB_FIXED_FILES_INNER)
 AC_SUBST(HLIB_FIXED_FILES_OUTER)
 AC_SUBST(HLIB_FIXED_FILES_MISC)

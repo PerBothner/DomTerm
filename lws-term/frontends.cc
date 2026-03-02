@@ -682,7 +682,7 @@ do_run_browser(struct options *options, struct tty_client *tclient, const char *
             "</head>\n"
             "<body></body></html>\n",
             browser_specifier, http_port,
-            tclient->wkind == xterminal_window ? "-xtermjs" : "",
+            tclient->wkind == xterminal_window ? "-xtermjs" : tclient->wkind == ghterminal_window ? "-ghostty" : "",
             do_Qt ? "?with=qchannel" : "",
             SERVER_KEY_LENGTH, server_key,
             hash_only);
@@ -871,6 +871,8 @@ display_session(struct options *options, struct pty_client *pclient,
             pane_options["windowNumber"] = wnum;
         if (wkind == xterminal_window)
             pane_options["use_xtermjs"] = true;
+        else if (wkind == ghterminal_window)
+            pane_options["use_ghostty"] = true;
         if (pclient && pclient->session_number >= 0)
             pane_options["sessionNumber"] = pclient->session_number;
         if (wkind == saved_window || wkind == browser_window) {
@@ -914,6 +916,8 @@ display_session(struct options *options, struct pty_client *pclient,
             }
             if (wkind == xterminal_window)
                 sb.printf("&terminal=xtermjs");
+            else if (wkind == ghterminal_window)
+                sb.printf("&terminal=ghostty");
             if (options->headless)
                 sb.printf("&headless=true");
 
@@ -963,5 +967,5 @@ int
 display_terminal_session(struct options *options, struct pty_client *pclient)
 {
     return display_session(options, pclient, nullptr,
-                           pclient->use_xtermjs ? xterminal_window : dterminal_window);
+                           pclient->use_xtermjs ? xterminal_window : pclient->use_ghostty ? ghterminal_window : dterminal_window);
 }

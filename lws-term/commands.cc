@@ -820,8 +820,13 @@ static void pclient_status_info(struct pty_client *pclient, FILE *out)
                         REMOTE_SESSIONNUMBER_KEY);
         if (! remote.empty())
             fprintf(out, "#%s", remote.c_str());
-    } else
+    } else {
         fprintf(out, "pid: %d, tty: %s", pclient->pid, pclient->ttyname);
+        if (pclient->use_xtermjs)
+            fprintf(out, " (xterm.js)");
+        else if (pclient->use_ghostty)
+            fprintf(out, " (ghostty-web)");
+    }
     if (! pclient->session_name.empty())
         fprintf(out, ", name: %s", pclient->session_name.c_str()); // FIXME-quote?
     if (pclient->paused)

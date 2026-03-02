@@ -324,12 +324,16 @@ callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, voi
                 opts = LIB_WHEN_SIMPLE;
             else if (strcmp(fname, "/xtermjs.html") == 0)
                 opts = LIB_WHEN_XTERMJS;
+            else if (strcmp(fname, "/ghostty.html") == 0)
+                opts = LIB_WHEN_GHOSTTY;
             else if (strcmp(fname, "/main.html") == 0)
                 opts = LIB_WHEN_OUTER;
             else if (strcmp(fname, "/outer.html") == 0)
                 opts = LIB_WHEN_OUTER|LIB_WHEN_SIMPLE;
             else if (strcmp(fname, "/outer-xtermjs.html") == 0)
                 opts = LIB_WHEN_XTERMJS|LIB_WHEN_OUTER|LIB_WHEN_SIMPLE;
+            else if (strcmp(fname, "/outer-ghostty.html") == 0)
+                opts = LIB_WHEN_GHOSTTY|LIB_WHEN_OUTER|LIB_WHEN_SIMPLE;
             if (opts) {
                 char wbuf[30];
                 const char *warg =

@@ -81,7 +81,7 @@ DomTermLayout.addPaneRelative = function(oldItem, paneOp, newItemConfig)
             ? 13 : 11;
     }
 
-    const ctype = newItemConfig.use_xtermjs ? 'xterminal' : 'domterm';
+    const ctype = newItemConfig.use_xtermjs ? 'xterminal' : newItemConfig.use_ghostty ? 'ghterminal' :'domterm';
     let config = { componentType: ctype, type: 'component' };
     let extraConfig;
     if (newItemConfig) {
@@ -188,7 +188,7 @@ DomTermLayout.focusPane = function(pane, focused) {
 };
 
 DomTermLayout._selectLayoutPane = function(component, originMode/*unused*/) {
-    if (! DomTerm.useIFrame && ! DomTerm.usingXtermJs()) {
+    if (! DomTerm.useIFrame && ! DomTerm.usingXtermJs() && ! DomTerm.usingGhostty()) {
         let element = component.container.getElement().firstChild;
         let dt = element && element.classList.contains("domterm")
             ? element.terminal
@@ -410,6 +410,9 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
             if (cstate.use_xtermjs) {
                 url = url.replace(/[/]simple.html([?][^#]*)?#/,
                                   "/xtermjs.html$1#terminal=xtermjs&");
+            } else if (cstate.use_ghostty) {
+                url = url.replace(/[/]simple.html([?][^#]*)?#/,
+                                  "/ghostty.html$1#terminal=ghostty&");
             }
             if (ctype === "view-saved" && cstate.url)
                 url += (url.indexOf('#') >= 0 ? '&' : '#')
@@ -436,7 +439,7 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
         else
             query += "&main-window=true";
         let name = DomTerm.freshName();
-        DomTerm.makeTerminal(name, pane, query, parent, ctype=== "xterminal");
+        DomTerm.makeTerminal(name, pane, query, parent);
     }
     if (wrapped) {
         wrapped.paneNumber = paneNumber;
@@ -628,6 +631,7 @@ DomTermLayout.initialize = function(initialContent = null) {
 
     DomTermLayout.manager.registerComponent('domterm'/*SHOULD be "dterminal"*/, registerComponent);
     DomTermLayout.manager.registerComponent("xterminal", registerComponent);
+    DomTermLayout.manager.registerComponent("ghterminal", registerComponent);
     DomTermLayout.manager.registerComponent("browser", registerComponent);
     DomTermLayout.manager.registerComponent("view-saved", registerComponent);
 

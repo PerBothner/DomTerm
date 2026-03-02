@@ -18,7 +18,10 @@ OPTION_S(log_file, "log.file", OPTION_STRING_TYPE)
 OPTION_S(titlebar, "titlebar", OPTION_STRING_TYPE)
 OPTION_S(subwindows, "subwindows", OPTION_STRING_TYPE)
 #if WITH_XTERMJS
-OPTION_S(termimal, "xtermjs", OPTION_MISC_TYPE)
+OPTION_S(xtermimal, "xtermjs", OPTION_MISC_TYPE)
+#endif
+#if WITH_GHOSTTY
+OPTION_S(ghtermimal, "ghostty", OPTION_MISC_TYPE)
 #endif
 
 /* front-end options */

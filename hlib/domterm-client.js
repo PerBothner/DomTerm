@@ -341,7 +341,9 @@ function loadHandler(event) {
         DomTerm.addTitlebar = true;
     }
     const useXtermJs = params.get("terminal") === "xtermjs";
-    if (useXtermJs && typeof window.XTermPane === "undefined")
+    const useGhostty = params.get("terminal") === "ghostty";
+    // This lets handle window requests in "top" pane.
+    if ((useXtermJs || useGhostty) && typeof window.XTermPane === "undefined")
         DomTerm.useIFrame = 2;
     m = params.get("subwindows");
     if (m === "qt") {
@@ -542,7 +544,7 @@ function loadHandler(event) {
         if (no_session === null
             && (DomTerm.useIFrame == 2))
             no_session = "top";
-        if (no_session || useXtermJs) {
+        if (no_session || useXtermJs || useGhostty) {
             const wparams = new URLSearchParams(hash);
             wparams.append("no-session", "top");
             wparams.delete("open");
@@ -582,13 +584,16 @@ function loadHandler(event) {
                 cstate.sessionNumber = snumn;
             const wnameUnique = params.get("wname-unique");
             const wname = params.get("wname") || wnameUnique;
-            if (params.get("terminal")==="xtermjs")
+            const pterm = params.get("terminal");
+            if (pterm==="xtermjs")
                 cstate.use_xtermjs = true;
+            else if (pterm==="ghostty")
+                cstate.use_ghostty = true;
             if (wname) {
                 cstate.windowName = wname;
                 cstate.windowNameUnique = !!wnameUnique;
             }
-            let ctype = useXtermJs ? "xterminal" : "domterm";
+            let ctype = useXtermJs ? "xterminal" : useGhostty ? "ghterminal" : "domterm";
             if (browse_param) {
                 cstate.url = browse_param;
                 ctype = no_session === "browse" ? "browser" : no_session;
@@ -614,11 +619,7 @@ function loadHandler(event) {
             const mode = no_session === "browse" ? 'B' : 'T';
             if (no_session === "view-saved")
                 query = browse_param;
-            else if (DomTerm.mainTerm?.kind === "top")
-                query += "&main-window="+DomTerm._mainWindowNumber;
-            else
-                query += "&main-window=true";
-            const pane = PaneInfo.create(mwinnum, useXtermJs ? "xterminal" : "dterminal");
+            const pane = PaneInfo.create(mwinnum, useXtermJs ? "xterminal" : useGhostty ? "ghterminal" : "dterminal");
             if ((DomTerm.useIFrame == 2 || mode === 'B')
                 && ! DomTerm.isSubWindow()) {
                 if (snum)
@@ -641,7 +642,8 @@ function loadHandler(event) {
                 DomTerm._contentElement = el;
                 DomTerm.updateSizeFromBody();
             } else {
-                DomTerm.makeTerminal(name, pane, query, parent, useXtermJs);            }
+                DomTerm.makeTerminal(name, pane, query, parent);
+            }
         }
         DomTerm.layoutBefore = lastBodyChild ? lastBodyChild.nextSibling : null;
     }
