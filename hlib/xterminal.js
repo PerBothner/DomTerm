@@ -26,6 +26,7 @@ const imageCustomSettings = {
 class XTermPane extends DTerminal {
     constructor(windowNumber) {
         super(windowNumber, "xterminal");
+        this._lineEditingMode = -1;
         this.activateLink = (event, uri) => {
             DomTerm.handleLinkRef(uri, undefined, this);
         };
