@@ -7396,7 +7396,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                         el.parentNode.insertBefore(lineNode, el.nextSibling);
                         var rest = dt._breakString(el, lineNode,
                                                    beforeMeasure, afterMeasure,
-                                                   availWidth+startOffset,
+                                                   availWidth - beforePos,
                                                    didbreak, countColumns);
                         if (rest == "") {
                             // It all "fits", after all.  Can happen in
@@ -7700,20 +7700,24 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
  * All of these are 'measureLeft' positions - i.e. relative to start of logical
  * line, assuming no optional line-breaks.
 */
+
 Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterPos, availWidth, forceSomething, countColumns) {
+    const range = new Range();
+    range.selectNodeContents(textNode);
     var dt = this;
     var textData = textNode.data;
     var textLength = textData.length;
+    // Number of chars of textData that will fit without wrapping,
     var goodLength = 0; // Can sometimes do better FIXME
-    // number of chars known to require wrapping
+    // Number of chars known to require wrapping
     var badLength = textLength;
     // Width in pixels corresponding to goodLength:
-    var goodWidth = beforePos;
+    var goodWidth = 0;
     // Width in pixels corresponding to badLength:
     //var afterPos = right; // FIXME combine
-    var badWidth = afterPos;
+    var badWidth = afterPos - beforePos;
     if (countColumns) {
-        var col = Math.floor((availWidth-beforePos) / dt.charWidth);
+        var col = Math.floor(availWidth / dt.charWidth);
         goodLength = UnicodeProperties.columnToIndexInContext(textData, 0, col,
                                                               false);
         goodWidth += col * dt.charWidth;
@@ -7735,8 +7739,9 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
         else if (nextTry >= badLength)
             nextTry = badLength - 1;
         // FIXME check for split surrogate pair
-        textNode.data = textData.substring(0, nextTry);
-        var nextPos = lineNode.offsetLeft;
+        range.setEnd(textNode, nextTry);
+        const rect = range.getBoundingClientRect();
+        const nextPos = rect.width;
         if (nextPos > availWidth) {
             badLength = nextTry;
             badWidth = nextPos
@@ -7745,6 +7750,7 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
             goodWidth = nextPos;
         }
     }
+    textNode.data = textData.substring(0, goodLength);
     if (forceSomething && goodLength == 0) {
         var ch0len = 1;
         if (textLength >= 2) {
@@ -7770,8 +7776,9 @@ Terminal.prototype._breakString = function(textNode, lineNode, beforePos, afterP
         textNode.parentNode.removeChild(textNode);
     else
         textNode.data = textData.substring(0, goodLength);
-    lineNode.measureLeft = goodWidth;
+    lineNode.measureLeft = goodWidth + beforePos;
     lineNode.measureWidth = 0;
+    range.selectNode(document.body);
     return goodLength < textLength ? textData.substring(goodLength) : "";
 };
 
