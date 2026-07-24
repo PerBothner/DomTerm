@@ -30,7 +30,7 @@ export const GRAPHEME_BREAK_ExtPic = 11;
 // Only used as return value from shouldJoin/shouldJoinBackwards.
 // (Must be positive; distinct from other values;
 // and become GRAPHEME_BREAK_Other when masked with GRAPHEME_BREAK_MASK.)
-const GRAPHEME_BREAK_SAW_Regional_Pair = 32;
+export const GRAPHEME_BREAK_SAW_Regional_Pair = 32;
 
 export const CHARWIDTH_NORMAL = 0;
 export const CHARWIDTH_FORCE_1COLUMN = 1;
