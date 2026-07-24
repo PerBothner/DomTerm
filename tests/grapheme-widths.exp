@@ -10,16 +10,26 @@
 {👶👶🏿X}8|23456781234
 {á}     |letter a × acute accent
 {á}45678|letter a × acute accent
-{각}    |Hangul syllables (correct on Firefox)
-{각}5678|Hangul syllables (correct on Firefox)
+{각}    |Hangul Jamo
+{각}5678|Hangul Jamo
+{각=가=각=}     |more Jamo
+{각=가=각=}45678|more Jamo
+{가=횅=}        |Hangul syllables (pre-composed)
+{가=횅=}12345678|Hangul syllables (pre-composed)
+{🙋🙋‍♂️}  |person/man raising hand
+{🙋🙋‍♂️}78|person/man raising hand
+{=🏋=🏋️=🏋🏾‍♀=}     |person lifting weights (plain, emoji); woman lighting weights, medium dark
+{=🏋=🏋️=🏋🏾‍♀=}45678|person lifting weights (plain, emoji); woman lighting weights, medium dark
 {👩‍👩‍👦}    |woman+zwj+woman+zwj+boy
 {👩‍👩‍👦}5678|woman+zwj+woman+zwj+boy
 {🤦🏼‍♂️}    |face palm × fitzpatrick type-3 × zwj × male × emoji presentation
 {🤦🏼‍♂️}5678|face palm × fitzpatrick type-3 × zwj × male × emoji presentation
-{👩}    |woman
-{👩}5678|woman781234
+{=👩👩‍🎓=👨🏿‍🎓=}     |woman; woman student; man student dark
+{=👩👩‍🎓=👨🏿‍🎓=}45678|woman; woman student; man student dark
 {x哀公} |
 {x哀公}8|23456781234
+{/哀︎公︎/}        |Kanji with text presentation
+{/哀︎公︎/}12345678|Kanji with text presentation
 {哀公xy問}      |
 {哀公xy問}345678|234
 {⚰⚰}    |coffin coffin
