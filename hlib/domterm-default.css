@@ -5,6 +5,9 @@ div.domterm.markmode *::selection {background-color: slateblue; color: #FFF }
 /* "\21a9" is "leftwards arrow with hook".
    It is used to indicate a wrapped line, rather like a hyphen. */
 span[breaking="yes"][line="soft"]:before {content: "\21a9"; }
+span[breaking="yes"][line="soft"] { color: #CAA; }
+div.domterm[reverse-video] span[breaking="yes"][line="soft"] { color: #a88; }
+
 div.domterm {
     /* A light color used for the default background in normal mode,
        or used for default foreground (text) in reverse-video mode.
