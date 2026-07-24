@@ -33,6 +33,8 @@ div.domterm {
     --dt-white: #FFFFFF; /* X: 15=white */
 }
 
+span.term-style[font-family="serif"] { font-family: serif }
+span.term-style[font-family="sans-serif"] { font-family: sans-serif }
 span.term-style[font-weight="bold"] { font-weight: bold }
 span.term-style[font-weight="lighter"] { font-weight: lighter }
 span.term-style[font-style="italic"] { font-style: italic }

@@ -1073,6 +1073,21 @@ class DTParser {
                             i += 2;
                         }
                         break;
+                    case 144: // font-family
+                        var next = this.getParameter(i+1,-1);
+                        var property = null;
+                        if (next >= 0) {
+                            property = next === 2 ? "sans-serif"
+                                : next === 3 ? "serif"
+                                : null;
+                            if (property !== null) {
+		                let lineStart = term.lineStarts[term.getAbsCursorLine()];
+                                lineStart._widthMode = Terminal._WIDTH_MODE_VARIABLE_SEEN;
+                            }
+                            i++;
+                        }
+                        term._pushStyle("font-family", property);
+                        break;
                     case 39: term._pushStyle("color", null/*defaultForegroundColor*/); break;
                     case 40: case 41: case 42: case 43:
                     case 44: case 45: case 46: case 47:

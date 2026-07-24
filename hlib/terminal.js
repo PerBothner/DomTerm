@@ -2993,7 +2993,7 @@ Terminal.prototype._popStyleSpan = function() {
 };
 
 DomTerm._styleAttributes = ["style", "color", "background-color",
-                            "font-weight", "text-decoration"];
+                            "font-weight", "text-decoration", "font-family"];
 DomTerm._styleSpansMatch = function(newSpan, oldSpan) {
     for (var i = DomTerm._styleAttributes.length; --i >= 0; ) {
         var attrName = DomTerm._styleAttributes[i];
@@ -3118,6 +3118,7 @@ Terminal.prototype._adjustStyle = function() {
             case "text-line-through":
                 decoration = decoration ? decoration + " line-through" : "line-through";
                 break;
+            case "font-family":
             case "font-weight":
             case "font-style":
                 styleSpan.setAttribute(key, value);
