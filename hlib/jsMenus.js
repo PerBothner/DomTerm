@@ -488,6 +488,10 @@ Menu._keydownListener = function(e) {
 			if (next)
 				next.jsMenuItem.select(next, true, false);
 			break;
+		default:
+			e.preventDefault();
+			e.stopPropagation();
+			break;
 		}
 	}
 }
