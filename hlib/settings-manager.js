@@ -668,7 +668,7 @@ function convertValue(value, srcMode, dstMode, context) {
             } else {
                 num = Number(value);
             }
-            if (isNaN(num) && value() != "NaN")
+            if (isNaN(num) && value != "NaN")
                 context.reportError(context, "value is not a number");
             value = num;
         }
