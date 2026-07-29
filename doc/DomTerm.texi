@@ -1794,6 +1794,17 @@ defaulting to @code{.}, the current window.
 @table @asis
 @indsubcmd{reverse-video}
 @item @b{@code{reverse-video}} @code{on}|@code{off}
+Switch foreground (text) and background colors, and make some related changes.
+Equivalent to the escape sequence @code{"\e[?5h"} (on) or @code{"\033[?5l"} (off).
+
+Normally it is better to use the @code{style.dark} setting. For example:
+@example
+domterm settings style.dark=on
+@end example
+The @code{reverse-video} command only changes the visible buffer,
+while @code{style.dark} also affects menus and other user-interface elements.
+If both @code{style.dark} and @code{reverse-video} are on, they partially cancel:
+The terminal buffer will have a light background, while menus etc will have a dark background.
 @end table
 
 @table @asis
@@ -1813,7 +1824,7 @@ $ domterm add-style "div.domterm @{ --background-color: pink @}"
 
 You can also set the @code{background-color} style directly:
 @example
-$ domterm add-style "div.domterm @{ background-color: pink @}"
+$ domterm add-style "div.dt-buffer @{ background-color: pink @}"
 @end example
 However, it is better to set the @code{--background-color} CSS variable,
 as that is required for reverse video and ``Background Color Erase'' to work.
@@ -2221,7 +2232,7 @@ If there are no arguments, the result is 1.
 @subsubheading Conditional template
 
 @table @asis
-@item @var{template-conditional} ::= @stxlitlbrace{}@stxlit{?} @arbno{@var{template-condition}} @code{;} @var{template-then-phrase} ]@code{;} @var{template-else-phrase}] @stxlit{@}}
+@item @var{template-conditional} ::= @stxlitlbrace{}@stxlit{?} @arbno{@var{template-condition}} @code{;} @var{template-then-phrase} [@code{;} @var{template-else-phrase}] @stxlit{@}}
 @item @var{template--phrase} ::= @var{template-phrase} | @stxlit{?} @arbno{@var{template-condition}} @code{;} @var{template-then-phrase} ]@code{;} @var{template-else-phrase}]
 @item @var{template-condition} ::= [@stxlit{!}]@var{template-word}
 @end table
@@ -2354,7 +2365,7 @@ The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};@{
 
 @emph{Template.} Set the default foreground color. This is used for text, unless overridden.
 
-The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};#fffff;@{color.black@}@}}.
+The default depends on the @code{style.dark} setting: @code{@{?@{style.dark@};#fffff8;@{color.black@}@}}.
 
 @indsetting{color.black}
 @indsetting{color.red}
@@ -4483,40 +4494,41 @@ style.user=
 You can also change the stylesheets using @code{domterm add-style} or
 @code{domterm load-stylesheet} sub-commands.  For example:
 @example
-$ domterm add-style "div.domterm @{ background-color: azure @}"
+$ domterm add-style "div.dt-buffer @{ background-color: azure @}"
 @end example
 
-@subheading Reverse video (dark vs light)
+@subheading Reverse video (dark vs light mode)
 
 By default DomTerm uses uses dark-colored (black) foreground (text) on a
 light-colored (off-white) background.
-Reverse video switches these, by using a light-colored text
+Dark mode switches these, by using a light-colored text
 on a dark background.
-
-You can enable reverse-video mode using the command:
-@example
-$ domterm reverse-video on
-@end example
-or in the @code{settings.ini} file:
-@example
-style.dark=on
-@end example
-
-Enabling reverse-video does not change stylesheet rules,
-but instead sets the @code{reverse-video} attribute on the
-top-level @code{domterm} element.  This is used to select
-differe stylesheet rules for reverse-video.  For example
-to change the background color input @code{input} lines
-to a dark brown do this:
-@example
-div.domterm[reverse-video] span[std="input"] @{ background-color: #808200 @}
-@end example
-
-``Reverse-video mode'' is any style where the background is darker
+``Dark mode'' is any style where the background is darker
 than the foreground.  You can tweak individual style elements to
-achieve such a style, but its better to first explicitly set reverse-video mode
-(perhaps using the above command), because that
-selects a consistent whole.
+achieve such a style, but its better to first set the @code{dark.style}
+before tweaking invidual colors.
+Dark mode affects the entire domterm application, including menus and title bars.
+
+Furthermore, the terminal (or sections of text) can be
+in ``reverse-video'' mode. This switches the foreground and background colors.
+This can set for the whole terminal
+(by the @code{reverse-video} command or an excape sequence),
+or it can be set for a few characters by an escape sequence.
+Reverse video only affects the terminal proper - not menus or title bars.
+
+The ``effective dark mode'' is the combination dark mode style and the reverse-video state.
+If both are set, they cancel each other, giving a light background.
+
+The @code{dt-dark} attribute on the @code{domterm} element can be used to
+difference light and dark modes:
+it is set to @code{"dark"} when @code{style.dark} set;
+to @code{"reversed-dark"} when reverse-video selected but @code{style.dark} un-set;
+or to @code{"dark-reversed"} when both @code{style.dark} set and reverse-video selected so they cancel each other in terms of terminal text.
+To enable a style rule only in effective dark mode, use
+the @code{div.domterm[dt-dark$=dark]}, which matches for either @code{dark} or @code{reverse-dark} (but not @code{dark-reversed}). For example:
+@example
+div.domterm[dt-dark$=dark] span[std="prompt"] @{ background-color: #004000 @}
+@end example
 
 @subheading Color variables
 
@@ -6372,6 +6384,11 @@ has a certain well-behaved form.
 @item @var{domterm-element} ::= @code{<div class="domterm">} @var{domterm-toplevel} @code{</div>}
 A top-level ``DomTerm window'' is a @code{<div>} element
 whose @code{class} is @code{domterm}.
+
+The attribyte @code{dt-dark} if set can have the values
+@code{"dark"} (@code{style.dark} set);
+@code{"reversed-dark"} (reverse-video selected but @code{style.dark} un-set, so menus etc are in light mode);
+or @code{"dark-reversed"} (both @code{style.dark} set and reverse-video selected so they cancel each other in terms of terminal text)
 
 @item @var{domterm-toplevel} ::= @var{internal-div-elements} @var{domterm-buffer}@sup{+} @var{spacer}@sup{*}
 

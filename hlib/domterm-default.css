@@ -6,7 +6,7 @@ div.domterm.markmode *::selection {background-color: slateblue; color: #FFF }
    It is used to indicate a wrapped line, rather like a hyphen. */
 span[breaking="yes"][line="soft"]:before {content: "\21a9"; }
 span[breaking="yes"][line="soft"] { color: #CAA; }
-div.domterm[reverse-video] span[breaking="yes"][line="soft"] { color: #a88; }
+div.domterm[dt-dark$=dark] span[breaking="yes"][line="soft"] { color: #a88; }
 
 div.domterm {
     /* A light color used for the default background in normal mode,
@@ -48,11 +48,13 @@ div.domterm {
       transparent 15px
   );
 }
+
 div.dt-buffer {
     background-color: var(--background-color);
     color: var(--foreground-color);
 }
-div.domterm[reverse-video] {
+
+div.domterm[dt-dark$=dark] {
     color: #fffff8; background-color: black; /* fallback if var not handled */
     --background-color: var(--main-dark-color);
     --foreground-color: var(--main-light-color);
@@ -74,7 +76,7 @@ div.domterm-spacer {
    Check with tests/256-colors.sh. */
 div.domterm { --monospace-family: Cascadia Code, Terminal, Menlo, monospace, DejaVu Sans Mono; }
 div.domterm-pre, span.docutils.literal { font-family: var(--monospace-family) }
-div.domterm[reverse-video] span[std="prompt"] { background-color: #004000 } /* a dark green */
+div.domterm[dt-dark$=dark] span[std="prompt"] { background-color: #004000 } /* a dark green */
 .dt-editing-line {
     outline: 2px dashed #a0522440; /* sienna 25% */
     outline-offset: -2px; }
@@ -250,7 +252,7 @@ span.url { font-family: sans-serif; font-size: inherit }
 .dt-titlebar-button:hover, .dt-titlebar .menu-item:hover {
     background-color:  #ececec;
 }
-body[reverse-video] .dt-titlebar-button:hover, body[reverse-video] .dt-titlebar .menu-item:hover {
+body[dt-dark|=dark] .dt-titlebar-button:hover, body[dt-dark|=dark] .dt-titlebar .menu-item:hover {
     background-color: #4040a0;
 }
 .dt-popup-panel div.dt-overlay-titlebar {background-color: lightgrey; }
@@ -270,7 +272,7 @@ div.dt-context-popup {
     background: #ececec;
     border-color: sienna;
 }
-body[reverse-video] div.dt-context-popup {
+body[dt-dark|=dark] div.dt-context-popup {
    background: #6c4c4c;
    border-color: #150262;
 }
@@ -293,25 +295,25 @@ tbody > tr > td  {
     outline: solid thin #CCC;
 }
 
-body[reverse-video] .nwjs-menu {
+body[dt-dark|=dark] .nwjs-menu {
     color: #f0f0f0;
     background-color: #101010;
 }
-body[reverse-video] .contextmenu .menu-item.active,
-body[reverse-video] .menu-item.normal.submenu-active,
-body[reverse-video] .menu-item.normal.submenu-active:hover {
+body[dt-dark|=dark] .contextmenu .menu-item.active,
+body[dt-dark|=dark] .menu-item.normal.submenu-active,
+body[dt-dark|=dark] .menu-item.normal.submenu-active:hover {
     background-color: #3030a0;
 }
-body[reverse-video] .menu-item:hover {
+body[dt-dark|=dark] .menu-item:hover {
     background-color: inherit;
 }
 
-body[reverse-video] div.dt-buffers::-webkit-scrollbar { width: 8px; }
-body[reverse-video] div.dt-buffers::-webkit-scrollbar-track {
+body[dt-dark|=dark] div.dt-buffers::-webkit-scrollbar { width: 8px; }
+body[dt-dark|=dark] div.dt-buffers::-webkit-scrollbar-track {
     background: #a0a0a0; }
-body[reverse-video] div.dt-buffers::-webkit-scrollbar-thumb {
+body[dt-dark|=dark] div.dt-buffers::-webkit-scrollbar-thumb {
     background: #404040;
     width: 6px;
     border-radius: 4px; }
-body[reverse-video] div.dt-buffers::-webkit-scrollbar-thumb:hover { background: lightblue; }
-body[reverse-video] div.dt-buffers::-webkit-scrollbar-thumb:active { background: blue; }
+body[dt-dark|=dark] div.dt-buffers::-webkit-scrollbar-thumb:hover { background: lightblue; }
+body[dt-dark|=dark] div.dt-buffers::-webkit-scrollbar-thumb:active { background: blue; }

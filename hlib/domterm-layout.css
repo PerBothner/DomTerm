@@ -34,12 +34,12 @@ div.domterm-active div.lm_stack{background:#e1e1e1;border:2px solid magenta}
 .lm_tab {cursor:pointer; }
 body.focused .lm_header.lm_focused,
 body.focused .dt-titlebar { background-color:#f0d8e8; }
-body[reverse-video].focused .dt-titlebar { background-color:#f0d8e8; }
-body[reverse-video] .lm_header,
-body[reverse-video] .menubar,
-body[reverse-video] .dt-titlebar { background-color: #606060; color: white; }
-body[reverse-video].focused .dt-titlebar,
-body[reverse-video].focused .lm_header.lm_focused { background-color: #101010; }
+body[dt-dark|=dark].focused .dt-titlebar { background-color:#f0d8e8; }
+body[dt-dark|=dark] .lm_header,
+body[dt-dark|=dark] .menubar,
+body[dt-dark|=dark] .dt-titlebar { background-color: #606060; color: white; }
+body[dt-dark|=dark].focused .dt-titlebar,
+body[dt-dark|=dark].focused .lm_header.lm_focused { background-color: #101010; }
 .lm_header .lm_tab, .lm_header .lm_tabdropdown_list {font-family:Arial,sans-serif;font-size:12px;color:#888888;background:#fafafa;margin-right:2px;padding-bottom:3px;border-bottom:none; }
 .lm_header .lm_tab,
   .lm_header .lm_tabdropdown_list > .lm_title{border:1px solid gray }
@@ -50,7 +50,7 @@ body[reverse-video].focused .lm_header.lm_focused { background-color: #101010; }
 section.lm_header .lm_tab.lm_active{border-color: var(--focused-pane-color)}
 span.domterm-windowname {display: inline; font-style: italic;}
 span.domterm-windowname { color: #777777}
-body[reverse-video] span.domterm-windowname { color: #d0d0d0; }
+body[dt-dark|=dark] span.domterm-windowname { color: #d0d0d0; }
 section.lm_header li.lm_tab span.domterm-windowname,
 div.lm_row section.lm_header li.lm_tab.lm_active span.domterm-windowname {
     display: none }

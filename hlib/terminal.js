@@ -522,8 +522,12 @@ class Terminal extends PaneInfo {
     }
 
     updateColor(setting, value, context) {
-        if (this.topNode)
-            this.topNode.style.setProperty(setting.cssVariable, value);
+        if (this.topNode) {
+            if (value)
+                this.topNode.style.setProperty(setting.cssVariable, value);
+            else
+                this.topNode.style.removeProperty(setting.cssVariable);
+        }
     }
 
     updateCaretColor(caret, caretAccent, context) {
@@ -651,7 +655,7 @@ class Terminal extends PaneInfo {
             errmsg += `setting '${context?.curSetting?.name}': ${message}`;
         };
         try {
-            this.setOptions(options.settings, context);
+            this.setOptions(settings, context);
         } catch (e) {
             errmsg = "caught "+e;
         }
@@ -5861,7 +5865,7 @@ Terminal.prototype.resetTerminal = function(full, saved) {
 };
 
 Terminal.prototype.updateReverseVideo = function() {
-    const value = this.darkMode !== this.sstate.reverseVideo;
+    const value = this.darkMode !== this.sstate.reverseVideo; // OLD
     if (value) {
         document.body.setAttribute("reverse-video", "yes");
         if (this.topNode)
@@ -5870,6 +5874,30 @@ Terminal.prototype.updateReverseVideo = function() {
         document.body.removeAttribute("reverse-video");
         if (this.topNode)
             this.topNode.removeAttribute("reverse-video");
+    }
+    if (this._darkVideoSetting) {
+        const context = new Settings.EvalContext(this);
+        context.pushSetting(this._darkVideoSetting);
+        this._darkVideoSetting.update(value, context);
+        context.popSetting();
+        context.handlePending();
+    }
+
+    if (this.darkMode)
+        document.body.setAttribute("dt-dark", "dark");
+    else
+        document.body.removeAttribute("dt-dark");
+    if (this.topNode) {
+        const old = this.topNode.getAttribute("dt-dark");
+        const dark = this.darkMode ?
+              (this.sstate.reverseVideo ? "dark-reverse" : "dark") :
+              (this.sstate.reverseVideo ? "reverse-dark" :  null);
+        if (dark !== old) {
+            if (dark)
+                this.topNode.setAttribute("dt-dark", dark);
+            else
+                this.topNode.removeAttribute("dt-dark");
+        }
     }
     if (! DomTerm.isSubWindow()) {
         const gl_style_light = document.head
@@ -5964,6 +5992,7 @@ DomTerm.initSettings = function(term) {
     }
 
     const addColorSetting = (name, cssVariable, xtermThemeField, defaultTemplate) => {
+
         const setting = addSetting(name, Settings.STRING_VALUE, defaultTemplate, updateColor);
         setting.cssVariable = cssVariable;
         setting.xtermThemeField = xtermThemeField;
@@ -5971,11 +6000,9 @@ DomTerm.initSettings = function(term) {
     }
 
     const bgColor = addColorSetting("color.background",
-                                    "--background-color", "background",
-                                    "{?{style.dark};{color.black};#fffff8}");
+                                    "--background-color", "background", "");
     const fgColor = addColorSetting("color.foreground",
-                                    "--foreground-color", "foreground",
-                                    "{?{style.dark};#fffff8;{color.black}}");
+                                    "--foreground-color", "foreground", "");
     addColorSetting("color.black", "--dt-black", "black", "#000000");
     addColorSetting("color.red", "--dt-red", "red", "#CD0000");
     addColorSetting("color.green", "--dt-green", "green", "#00CD00");
@@ -6052,8 +6079,7 @@ DomTerm.initSettings = function(term) {
                    DomTerm.masterKeymap =
                        DomTerm.masterKeymap.update(setting.value);
                });
-
-    const darkSetting = addSetting("style.dark", Settings.NUMBER_VALUE, "auto",
+    const darkSetting = addSetting("style.dark", Settings.BOOLEAN_VALUE, "auto",
                (setting, context) => {
                    term.darkMode = setting.value;
                    term.updateReverseVideo();
@@ -6087,6 +6113,7 @@ DomTerm.initSettings = function(term) {
         return Settings.convertValue(value, tmode,
                                      Settings.BOOLEAN_VALUE, context);
     };
+    term._darkVideoSetting = addSetting("dark-mode", Settings.BOOLEAN_VALUE, "{style.dark}");
 };
 
 Terminal.prototype.updateSettings = function(context = undefined) {
