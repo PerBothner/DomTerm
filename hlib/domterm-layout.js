@@ -434,10 +434,6 @@ DomTermLayout._initPane = function(cstate, ctype, parent = DomTerm.layoutTop) {
         pane = PaneInfo.create(cstate.windowNumber, ptype);
         if (ctype === "view-saved")
             query = cstate.url;
-        else if (DomTerm.mainTerm && DomTerm._mainWindowNumber >= 0)
-            query += `&main-window=${DomTerm._mainWindowNumber}`;
-        else
-            query += "&main-window=true";
         let name = DomTerm.freshName();
         DomTerm.makeTerminal(name, pane, query, parent);
     }
@@ -691,10 +687,14 @@ DomTermLayout.initialize = function(initialContent = null) {
                                          hel.classList.add("dt-titlebar");
                                          DomTerm.titlebarCurrent = hel;
                                          DomTerm.createTitlebar(hel, header.tabsContainerElement);
-                                         DomTerm.titlebarElement.style.display = "none";
+                                         const tstyle = DomTerm.titlebarElement.style;
+                                         tstyle.position = 'absolute';
+                                         tstyle.width = '100%';
                                          // change to merged header
                                      } else {
-                                         DomTerm.titlebarElement.style.display = "flex";
+                                         const tstyle = DomTerm.titlebarElement.style;
+                                         tstyle.position = '';
+                                         tstyle.width = '100%';
                                          DomTerm.createTitlebar(DomTerm.titlebarElement, null);
                                      }
                                      DomTermLayout.singleStack = singleStack;

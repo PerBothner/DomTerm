@@ -104,8 +104,11 @@ function createNewWindow (url, options, headless)
         width: w, height: h,
         webPreferences: webPreferences,
         useContentSize: true,
-        frame: frame, transparent: !frame,
         show: false};
+    if (! frame) {
+        bwoptions.titleBarStyle = "hidden";
+        bwoptions.titleBarOverlay = { height: 22 };
+    }
     if (process.platform === 'darwin' && ! frame) {
         bwoptions.titleBarStyle = "hidden";
         bwoptions.trafficLightPosition = { x: 8, y: 5 };

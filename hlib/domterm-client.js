@@ -171,6 +171,9 @@ function setupParentMessages2() {
 DomTerm.createTitlebar = function(titlebarNode, tabs) {
     while (titlebarNode.firstChild)
         titlebarNode.removeChild(titlebarNode.firstChild);
+    if (DomTerm.isElectron()) {
+        titlebarNode.classList.add('dt-use-controls-overlay');
+    }
     let titleButtons = DomTerm.titlebarButtons;
     if (! titleButtons) {
         titleButtons = DtUtil.createSpanNode("dt-titlebar-buttons");
@@ -196,8 +199,9 @@ DomTerm.createTitlebar = function(titlebarNode, tabs) {
     let titlebarInitial = DomTerm.titlebarInitial;
     if (! titlebarInitial) {
         titlebarInitial = DtUtil.createSpanNode("dt-titlebar-prefix");
+        DomTerm.titlebarInitial = titlebarInitial;
         DomTerm.titlebarButtons = titleButtons;
-        if (DomTerm.isMac) {
+        if (titleButtons && DomTerm.isMac) {
             titlebarInitial.appendChild(titleButtons);
         }
         if (true) {
@@ -261,10 +265,10 @@ DomTerm.createTitlebar = function(titlebarNode, tabs) {
         titlebarNode.addEventListener('mousedown', drag);
         titlebarNode.addEventListener('touchstart', drag);
     }
-    if (! DomTerm.isMac) {
+    if (titleButtons && ! DomTerm.isMac) {
         titlebarNode.appendChild(titleButtons);
     }
-    if (! DomTerm.isMac || ! DomTerm.isElectron()) {
+    if (! DomTerm.isMac) {
         titlebarNode.querySelector("#dt-titlebar-minimize")
             .addEventListener('click', (e) => {
                 DomTerm.windowOp('minimize');
@@ -308,7 +312,6 @@ function createResizeAreas() {
 DomTerm.resizeTitlebar = function(titlebarElement = DomTerm.titlebarCurrent) {
     if (! DomTerm.addTitlebar)
         return;
-    console.log("resizeTitlebar");
 };
 
 function loadHandler(event) {

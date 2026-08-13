@@ -678,6 +678,11 @@ DomTerm.makeTerminal = function(name, paneInfo, query, parent = DomTerm.layoutTo
         if (paneInfo.kind === "view-saved") {
             Terminal.loadSavedFile(topNode, query);
         } else {
+            if (DomTerm.mainTerm && DomTerm._mainWindowNumber >= 0)
+                query += `&main-window=${DomTerm._mainWindowNumber}`;
+            else
+                query += "&main-window=true";
+
             DomTerm.connectWS(query, paneInfo, topNode);
         }
         DomTerm.maybeWindowName(top);
