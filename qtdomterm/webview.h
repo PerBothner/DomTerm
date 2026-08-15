@@ -70,7 +70,7 @@ class ProcessOptions;
 #if USE_KDDockWidgets
 #include <kddockwidgets/KDDockWidgets.h>
 #include <kddockwidgets/DockWidget.h>
-typedef KDDockWidgets::DockWidget DockWidget;
+typedef KDDockWidgets::QtWidgets::DockWidget DockWidget;
 #endif
 #if USE_DOCK_MANAGER
 #include "DockManager.h"
@@ -115,7 +115,7 @@ public:
     void loadUrl(const QUrl &url);
     QUrl url() const;
 #if USE_KDDockWidgets
-    void setDockWidget(KDDockWidgets::DockWidget *dock);
+    void setDockWidget(DockWidget *dock);
 #endif
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
     DockWidget *dockWidget();

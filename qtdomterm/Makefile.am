@@ -50,12 +50,13 @@ qtdomterm_CPPFLAGS = $(QT_CPPFLAGS) $(AM_CPPFLAGS)
 qtdomterm_LDFLAGS  = $(QT_LDFLAGS) $(LDFLAGS)
 qtdomterm_LDADD    = $(QT_LIBS) $(LDADD)
 if USE_KDDockWidgets
-qtdomterm_CPPFLAGS += -DUSE_KDDockWidgets=1 $(QT_DOCKING_CFLAGS)
+qtdomterm_CPPFLAGS += -DUSE_KDDockWidgets=1 -DKDDW_FRONTEND_QT -DKDDW_FRONTEND_QTQUICK -DKDDW_FRONTEND_QTWIDGETS $(QT_DOCKING_CFLAGS)
 qtdomterm_LDFLAGS += -L$(QT_DOCKING_LIBDIR)
-LDADD =-lkddockwidgets
+LDADD =-lkddockwidgets-qt6
 endif
 if USE_QT_DOCKING
 qtdomterm_CPPFLAGS += -DUSE_DOCK_MANAGER=1 $(QT_DOCKING_CFLAGS)
 qtdomterm_LDFLAGS += -L$(QT_DOCKING_LIBDIR)
-LDADD =-lqtadvanceddocking
+LDADD =-lqtadvanceddocking-qt6
+#LDADD =-lqtadvanceddocking
 endif

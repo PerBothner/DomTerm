@@ -50,11 +50,14 @@ public slots:
     void saveFile(const QString& html);
     void showMenubar(bool show);
     void setWindowTitle(const QString& title);
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    void setTabName(const QString& name);
+#endif
     void setSavedHtml(const QString &info) { _savedHtml = info; }
     void windowOp(const QString& opname);
     void openNewWindow(const QString& joptions);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
-    void newPane(int paneOp, const QString& url);
+    void newPane(int paneOp, int oldWinNum, int windowNumber, const QString& url);
 #else
     void newPane(int windowNumber, const QString& url);
 #endif

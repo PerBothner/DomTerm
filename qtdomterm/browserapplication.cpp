@@ -154,6 +154,7 @@ BrowserApplication::BrowserApplication(int &argc, char **argv,QSharedDataPointer
     initActions();
 
 #if USE_KDDockWidgets
+    KDDockWidgets::initFrontend(KDDockWidgets::FrontendType::QtWidgets);
     auto flags = KDDockWidgets::Config::self().flags();
     flags |= KDDockWidgets::Config::Flag_HideTitleBarWhenTabsVisible;
     flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
@@ -580,7 +581,7 @@ BrowserMainWindow *BrowserApplication::newMainWindow(const QString& url, int wid
     }
     if (width > 0 || height > 0) {
         if (x >= 0 && y >= 0)
-            browser->setGeometry(x, y, width, height);
+            browser->setGeometry(QRect(x, y, width, height));
         else
             browser->setSize(width, height);
     }
@@ -704,25 +705,28 @@ BrowserApplication::closePane(int windowNumber)
     }
 }
 
+QWidget*
+BrowserApplication::lookupPane(int windowNumber)
+{
+    return windowNumber >= paneMap.size() || windowNumber < 0 ? nullptr
+        : paneMap[windowNumber];
+}
+
 void
 BrowserApplication::focusPane(int windowNumber)
 {
-    if (windowNumber < paneMap.size() && windowNumber >= 0) {
-        auto webv = paneMap[windowNumber];
-        if (webv) {
-            webv->setFocus();
-        }
+    auto webv = lookupPane(windowNumber);
+    if (webv) {
+        webv->setFocus();
     }
 }
 
 void
 BrowserApplication::showPane(int windowNumber, bool visible)
 {
-    if (windowNumber < paneMap.size() && windowNumber >= 0) {
-        auto webv = paneMap[windowNumber];
-        if (webv) {
-            webv->setVisible(visible);
-        }
+    auto webv = lookupPane(windowNumber);
+    if (webv) {
+        webv->setVisible(visible);
     }
 }
 

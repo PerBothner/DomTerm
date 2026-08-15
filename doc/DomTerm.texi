@@ -749,7 +749,7 @@ cmake .
 make
 @end example
 
-@subsubheading Optional: Qt Docking (experimental)
+@subsubheading Optional: Qt Docking (CURRENTLY BROKEN)
 
 Managing docking (draggable panes and tabes) using a native
 library has some advantages (compared to GoldenLayout).
@@ -785,7 +785,7 @@ git clone https://github.com/KDAB/KDDockWidgets.git
 KDDOCK_DIR=`pwd`/+installed+ #for example
 mkdir build
 cd build
-cmake  -DCMAKE_INSTALL_PREFIX=$KDDOCK_DIR ..
+cmake -DCMAKE_INSTALL_PREFIX=$KDDOCK_DIR -DKDDockWidgets_QT6=ON ..
 make install
 @end example
 

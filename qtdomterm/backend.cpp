@@ -113,6 +113,13 @@ void Backend::setWindowTitle(const QString& title)
     webView()->mainWindow()->setWindowTitle(title);
 }
 
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+void Backend::setTabName(const QString& name)
+{
+    webView()->dockWidget()->setTitle(name);
+}
+#endif
+
 void Backend::windowOp(const QString& opname)
 {
     if (opname == "close")
@@ -126,17 +133,19 @@ void Backend::windowOp(const QString& opname)
 }
 
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
-void Backend::newPane(int paneOp, int windowNumber, const QString& url)
+void Backend::newPane(int paneOp, int oldWinNum, int windowNumber, const QString& url)
 {
-    auto webv = new WebView(webView()->m_processOptions, windowNumber, nullptr);
+    auto curView = dynamic_cast<WebView*>(BrowserApplication::lookupPane(oldWinNum));
+    if (! curView) curView = webView();
+    auto webv = new WebView(curView->m_processOptions, windowNumber, nullptr);
     webv->newPage(url);
     auto dockw = webv->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
-    auto curDock = webView()->dockWidget();
+    auto curDock = curView->dockWidget();
 #if USE_DOCK_MANAGER
 #if ADS_MULTI_MAIN_WINDOW
     auto manager = BrowserApplication::instance()->dockManager();
 #else
-    auto manager = webView()->mainWindow()->dockManager();
+    auto manager = curView->mainWindow()->dockManager();
 #endif
     ads::DockWidgetArea location = ads::NoDockWidgetArea;
     switch (paneOp) {
@@ -161,7 +170,11 @@ void Backend::newPane(int paneOp, int windowNumber, const QString& url)
     case 12: location = KDDockWidgets::Location_OnTop; break;
     case 13: location = KDDockWidgets::Location_OnBottom; break;
     }
-    curDock->addDockWidgetToContainingWindow(dockw, location, curDock);
+    if (curDock)
+        curDock->addDockWidgetToContainingWindow(dockw, location, curDock);
+    else {
+        mainWindow()->addDockWidget(dockw, KDDockWidgets::Location_OnLeft);
+    }
 #endif
 }
 #else
@@ -259,9 +272,9 @@ void Backend::sendParentMessage(const QString& command, const QString& args_json
 void Backend::openNewWindow(const QString& joptions)
 {
 #if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOWQ
-    JsonObject options = QJsonDocument::fromJson(joptions.toUtf8()).object();
+    QJsonObject options = QJsonDocument::fromJson(joptions.toUtf8()).object();
     int windowNumber = options.value("windowNumber").toInt(-1);
-    QString utl = options.value("url").toString();
+    QString url = options.value("url").toString();
     auto manager = webView()->mainWindow()->dockManager();
     auto webv = new WebView(webView()->m_processOptions, windowNumber, nullptr);
     webv->newPage(url);

@@ -204,15 +204,15 @@ case "${with_qt_docking}" in
   "yes" | "")
     ;;
   *)
-    QT_DOCKING_LIBDIR="${with_qt_docking}/lib"
-    QT_DOCKING_CFLAGS="-I${with_qt_docking}/include"
+    QT_DOCKING_LIBDIR="${with_qt_docking}/lib64"
+    QT_DOCKING_CFLAGS="-I${with_qt_docking}/include/qtadvanceddocking-qt6"
   esac
 case "${with_kddockwidgets}" in
   "yes" | "")
     ;;
   *)
     QT_DOCKING_LIBDIR="${with_kddockwidgets}/lib64"
-    QT_DOCKING_CFLAGS="-I${with_kddockwidgets}/include"
+    QT_DOCKING_CFLAGS="-I${with_kddockwidgets}/include/kddockwidgets-qt6"
   esac
 AM_CONDITIONAL(USE_QT_DOCKING, test "$with_qt_docking" != "no" -a "$with_qt_docking" != "")
 AM_CONDITIONAL(USE_KDDockWidgets, test "$with_kddockwidgets" != "no" -a "$with_kddockwidgets" != "")

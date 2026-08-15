@@ -6,6 +6,8 @@ DomTerm.simpleLayout = false;
 
 DomTerm.addTitlebar = false;
 
+DomTerm.externalDockingFramework = undefined;
+
 DomTerm.usingJsMenus = function() {
     // It might make sense to use jsMenus even for Electron.
     // One reason is support multi-key keybindings
@@ -74,23 +76,25 @@ function setupQWebChannel(channel) {
     DomTerm.inputModeChanged = function(term, mode) {
         backend.inputModeChanged(mode);
     }
-    if (DomTerm.mainSearchParams.get('qtdocking')) {
-        DomTerm.newPane = function(paneOp, options=null, oldPane=DomTerm.focusedPane) {
-            let windowNumber = options.windowNumber || -1;
+    if (DomTerm.externalDockingFramework) {
+        DomTerm.addPaneRelative = function(oldWinNum, paneOp, options) {
+            let windowNumber = (options && options.windowNumber) || -1;
             let url;
             if (options && options.componentType === "browser"
                 && options.url) {
                 url = options.url;
             } else {
-                let url = DomTerm.paneLocation;
+                url = DomTerm.paneLocation;
                 if (options && options.sessionNumber) {
                     url += url.indexOf('#') >= 0 ? '&' : '#';
                     url += "session-number="+options.sessionNumber;
                 }
                 url = DomTerm.addLocationParams(url);
             }
-            backend.newPane(paneOp, windowNumber, url);
+            backend.newPane(paneOp, oldWinNum, windowNumber, url);
         };
+        if (! DomTerm.isSubWindow())
+            backend.newPane(10, 1, DomTerm._initSubWnum, DomTerm._initSubUrl);
     }
     const oldAutoPagerChanged = DomTerm.autoPagerChanged;
     DomTerm.autoPagerChanged = function(term, mode) {
@@ -229,6 +233,7 @@ DomTerm.createTitlebar = function(titlebarNode, tabs) {
         titlebarNode.appendChild(titleNode);
         titleNode.innerText = "DomTerm window";
         DomTerm.displayWindowTitle = (info) => {
+            // info is a structure returned by getTitleInfo.
             // optimize if (partially) unchanged - FIXME
             let str = DomTerm.formatWindowLabel(info);
             titleNode.innerText = str;
@@ -396,6 +401,7 @@ function loadHandler(event) {
         DomTerm.server_key = m;
     }
     if (DomTerm.usingQtWebEngine) {
+        DomTerm.externalDockingFramework = DomTerm.mainSearchParams.get('qtdocking');
         DomTerm.paneLocation =
             DomTerm.paneLocation.replace("/simple.html", "/simple.html?with=qchannel");
         if (DomTerm.useToolkitSubwindows || ! DomTerm.isInIFrame())
@@ -507,6 +513,7 @@ function loadHandler(event) {
             setupParentMessages1();
             setupParentMessages2();
             DomTerm.displayWindowTitle = function(info) {
+                // info is a structure returned by getTitleInfo.
                 DomTerm.sendParentMessage("set-window-title", info); }
         }
     }
@@ -606,9 +613,9 @@ function loadHandler(event) {
                              componentState: cstate };
            DomTerm._initialLayoutConfig = config;
         }
-        if (layoutInitAlways && ! DomTerm.isSubWindow()) {
+        if (layoutInitAlways && ! DomTerm.externalDockingFramework && ! DomTerm.isSubWindow()) {
             DomTerm.withLayout((m) => { m.initialize([DomTerm._initialLayoutConfig]); });
-        } else {
+        } else /*if (! DomTerm.externalDockingFramework)*/ {
             let name = (DomTerm.useIFrame && window.name) || DomTerm.freshName();
             let parent = DomTerm.layoutTop;
             // only needed if we might use DnD setDragImage
@@ -634,16 +641,21 @@ function loadHandler(event) {
                 DomTerm.mainLocationParams = paneParams.toString();
                 const frame_url = mode === 'B' ? browse_param
                       : DomTerm.paneLocation/*+location.hash*/;
-                el = DomTerm.makeIFrameWrapper(frame_url, mode, parent);
-                DomTerm.maybeWindowName(el);
+                if (DomTerm.externalDockingFramework) {
+                    DomTerm._initSubUrl = DomTerm.addSubWindowParams(frame_url, mode);
+                    DomTerm._initSubWnum = mwin;
+                } else {
+                    el = DomTerm.makeIFrameWrapper(frame_url, mode, parent);
+                    DomTerm.maybeWindowName(el);
+                    pane.contentElement = el;
+                    el.paneInfo = pane;
+                    DomTerm._contentElement = el;
+                    DomTerm.updateSizeFromBody();
+                }
                 paneParams.delete('session-number');
                 paneParams.delete('window');
                 DomTerm.mainLocationParams = paneParams.toString();
-                pane.contentElement = el;
-                el.paneInfo = pane;
                 DomTerm.focusedPane = pane;
-                DomTerm._contentElement = el;
-                DomTerm.updateSizeFromBody();
             } else {
                 DomTerm.makeTerminal(name, pane, query, parent);
             }
@@ -730,6 +742,8 @@ function handleMessageFromChild(windowNum, command, args) {
         DomTerm.updateTitle(null, args[0]);
         break;
     case "set-window-title":
+        if (DomTerm._qtBackend && DomTerm.externalDockingFramework)
+            DomTerm._qtBackend.setTabName(DomTerm.formatWindowLabel(args[0]));
         DomTerm.displayWindowTitle(args[0]);
         break;
     case "domterm-context-menu":

@@ -117,6 +117,14 @@ DomTerm.withLayout = function(callback, initIfNeeded = false, err = undefined) {
         }));
 };
 
+DomTerm.addPaneRelative = function(oldWinNum, paneOp, options) {
+    DomTerm.withLayout((m) => {
+        let oldItem = m._numberToLayoutItem(oldWinNum);
+        if (oldItem)
+            m.addPaneRelative(oldItem, paneOp, options);
+    }, true);
+}
+
 DomTerm.supportsAutoInputMode = true;
 
 DomTerm.freshName = function() {
@@ -203,6 +211,9 @@ DomTerm.displayTitleString = function(str) {
        document.title = str;
 }
 
+/**
+ * @param info - a structure returned by getTitleInfo
+ */
 DomTerm.displayWindowTitle = function(info) {
     let str = DomTerm.formatWindowLabel(info) || "";
     const title = info.windowTitle;

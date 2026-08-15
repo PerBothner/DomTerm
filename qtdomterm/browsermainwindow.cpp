@@ -116,13 +116,13 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
                                      Qt::WindowFlags wflags
     )
 #if USE_KDDockWidgets
-    : KDDockWidgets::MainWindow(BrowserApplication::uniqueNameFromUrl(url), KDDockWidgets::MainWindowOption_None, parent)
+    : KDDockWidgets::QtWidgets::MainWindow(BrowserApplication::uniqueNameFromUrl(url), KDDockWidgets::MainWindowOption_None, parent)
 #else
     : QMainWindow(parent, wflags)
 #endif
     , m_application(application)
 #if USE_KDDockWidgets
-    , m_webView(new WebView(processOptions, windowNumber, nullptr))
+    , m_webView(new WebView(processOptions, windowNumber, this))
 #else
     , m_webView(new WebView(processOptions, windowNumber, this))
 #endif
@@ -150,11 +150,13 @@ BrowserMainWindow::BrowserMainWindow(BrowserApplication* application,
 #endif
     m_webView->newPage(url);
 #if USE_KDDockWidgets || USE_DOCK_MANAGER
-    auto dockw = m_webView->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
 #if USE_KDDockWidgets
+    m_webView->setVisible(false);
+    //m_webView->setParent(this);
+    auto dockw = m_webView->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
     this->addDockWidget(dockw, KDDockWidgets::Location_OnLeft);
-#endif
-#if USE_DOCK_MANAGER
+#else
+    auto dockw = m_webView->setDockWidget(BrowserApplication::uniqueNameFromUrl(url));
 #if ADS_MULTI_MAIN_WINDOW
     ads::CDockContainerWidget* container = BrowserApplication::instance()->dockManager()->addContainer(this);
     container->addDockWidget(ads::TopDockWidgetArea, dockw, nullptr);
@@ -309,6 +311,13 @@ WebView *BrowserMainWindow::webView() const
 {
     return m_webView;
 }
+
+#if USE_DOCK_MANAGER && ADS_MULTI_MAIN_WINDOW
+ads::CDockManager* BrowserMainWindow::dockManager()
+{
+    return m_application->dockManager();
+}
+#endif
 
 void BrowserMainWindow::slotShowWindow()
 {

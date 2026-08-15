@@ -103,6 +103,7 @@ public:
     void dockManager(ads::CDockManager* dm) { m_DockManager = dm; }
 #endif
     void registerPane(int windowNumber, WebView*pane);
+    static QWidget* lookupPane(int windowNumber);
     void closePane(int windowNumber);
     void focusPane(int windowNumber);
     void showPane(int windowNumber, bool visible);

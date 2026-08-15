@@ -114,7 +114,7 @@ void WebView::newPage(const QString& url)
 
 #if USE_KDDockWidgets
 void
-WebView::setDockWidget(KDDockWidgets::DockWidget *dock)
+WebView::setDockWidget(KDDockWidgets::QtWidgets::DockWidget *dock)
 {
     dock->setWidget(this);
     this->m_dockWidget = dock;
@@ -127,16 +127,22 @@ WebView::dockWidget()
 {
     if (! m_dockWidget) {
         //auto dock = new DockWidget(BrowserApplication::uniqueNameFromUrl(url));
-        auto dock = new DockWidget("DT-x");
-        dock->setWidget(this);
-        this->m_dockWidget = dock;
+        //new DockWidget("DT-x");
+        this->setDockWidget("DT-x");
+        //auto dock = mainWindow()->dockManager()->createDockWidget("DT-x");
+        //dock->setWidget(this);
+        //this->m_dockWidget = dock;
     }
     return m_dockWidget;
 }
 DockWidget *
 WebView::setDockWidget(const QString &uniqueName)
 {
-    auto dock = new DockWidget(uniqueName);
+#if USE_KDDockWidgets
+    auto dock = new KDDockWidgets::QtWidgets::DockWidget(uniqueName);
+#else
+    auto dock = mainWindow()->dockManager()->createDockWidget(uniqueName);
+#endif
     dock->setWidget(this);
     this->m_dockWidget = dock;
     return dock;
@@ -240,6 +246,9 @@ WebView::WebView(QSharedDataPointer<ProcessOptions> processOptions,
       //, _context_menu_pending(0)
     , m_windowNumber(windowNumber)
     , m_progress(0)
+#if USE_KDDockWidgets || USE_DOCK_MANAGER
+    , m_dockWidget(nullptr)
+#endif
     , m_page(0)
 {
     connect(this, SIGNAL(loadProgress(int)),

@@ -80,7 +80,7 @@ class BrowserApplication;
  */
 class BrowserMainWindow
 #if USE_KDDockWidgets
-    : public KDDockWidgets::MainWindow
+    : public KDDockWidgets::QtWidgets::MainWindow
 #else
     : public QMainWindow
 #endif
@@ -98,8 +98,12 @@ public:
     BrowserApplication* application() { return m_application; }
     void showMenubar(); // toggle
     void showMenubar(bool show);
-#if USE_DOCK_MANAGER && !ADS_MULTI_MAIN_WINDOW
+#if USE_DOCK_MANAGER
+#if ADS_MULTI_MAIN_WINDOW
+    ads::CDockManager* dockManager();
+#else
     ads::CDockManager* dockManager() { return m_DockManager; }
+#endif
 #endif
 public slots:
     void loadPage(const QString &url);

@@ -154,6 +154,9 @@ DomTermLayout._numberToLayoutItem = function(wnum) {
     return DomTermLayout.manager.findFirstComponentItemById(`${wnum}`);
 }
 
+/**
+ * @param cstate - either a componentstate or a structure returned by getTitleInfo
+ */
 DomTermLayout.updateLayoutTitle = function(item,
                                            cstate = item?.toConfig().componentState) {
     let title = DomTerm.formatWindowLabel(cstate);
