@@ -60,11 +60,14 @@ div.domterm-main-popup {
  * fix up the extra newline on copy-to-HTML; or copy-to-HTML should convert
  * the  <div class="domterm-pre"> to a <pre> node.
  */
-div.domterm-pre {
-    padding: 0px; margin: 0px; font-family: monospace;
-    unicode-bidi: embed; white-space: pre }
-div.domterm-pre { display: block; }
-div.domterm-pre[domterm-hidden="true"] { display: none; visibility: hidden  }
+div.domterm-block {
+    padding: 0px; margin: 0px; font-family: monospace; display: block;
+    unicode-bidi: embed; white-space: preserve wrap; }
+/* We assume domterm-block is set if domterm-pre is set. */
+div.domterm-pre { white-space: preserve nowrap; }
+div.domterm-block[logical-mode] { white-space: preserve nowrap; }
+div.domterm-block[logical-mode="4"] { white-space: preserve wrap; }
+div.domterm-block[domterm-hidden="true"] { display: none; visibility: hidden  }
 div.domterm.domterm-noscript div.domterm-pre { white-space: pre-wrap }
 span[class="wrap"] {padding: 0px; margin: 0px; white-space: nowrap }
 span { padding: 0px; margin: 0px;}

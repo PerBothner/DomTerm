@@ -7266,6 +7266,58 @@ Zu\e]115;"k-","k","ck"\aer
 @end example
 @end table
 
+@anchor{variable-width}
+@subsubsection Variable-width fonts (experimental)
+
+@table @asis
+@item @code{"\e[144;} @var{font} @code{"m"}
+Switch font as specified by @var{font}.
+If @var{font} is 0 or 1, use the default @code{monospace} font.
+If @var{font} is 2, use the default (variable-width) @code{sans-serif} font.
+If @var{font} is 3, use the default (variable-width) @code{serif} font.
+(A future extension should allow customizing these and other
+values of @var{font}.)
+
+It is recommended (and potentially more portable, though not required)
+to limit font-switching to logical-indexing lines.
+
+@item @code{\e[76;"} @var{kind} @code{"l"}
+Mark the current line as using @dfn{logical-indexing}.
+Only allowed at beginning of line.
+
+The application treats the line as being as long as necessary to avoid
+line-breaking. The terminal may break lines visually as needed,
+but it terms of cursor adressing it is treated as one long line,
+ignoring soft line-breaks. Horizontal indexing count characters
+(specifically Unicode point points) rather than columns:
+a "wide" character counts as one position rather than two,
+and a graphame cluster counts as the number Unicode code points
+in the cluster.
+
+The @var{kind} is a number to tell the terminal how to determine
+and display soft line breaks, but it does not affect application logic.
+If @var{kind} is 2, line-breaking is done at the character level (as
+many characters are displayed as will fit, regardless of word break),
+just like in normal non-logical-indexing mode.
+If @var{kind} is 3, it is like @var{2}, but if there is whitespace near the
+right margin, we break the line there, and only break in the middle of a word
+if the word is extra long.
+If @var{kind} is 4, line-breaking is handled by the browser
+(usually breaking on word boundaries).
+
+The default for @var{kind} (or if @var{kind} is 1) is @var{3},
+though that could be overriden by user preference.
+
+A line-wrap marker is shown if @var{kind} is 2 or 3.
+
+Logical-indexing mode is disabled for a line if @var{kind} is 0;
+erase-in-line (EL) is received with parameter 2 (or 0 if at the left column);
+erase-in-display (ED) is received with parameter 2
+(or 0 if the line is below the current line or
+the line is current line and at the left column);
+or delete-line (DL) is received. @emph{not implemented}.
+@end table
+
 @subsection Special sequences sent by DomTerm to back-end
 
 The prefix byte 0xFD is used to report an event or other information

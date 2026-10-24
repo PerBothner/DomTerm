@@ -2050,7 +2050,11 @@ Terminal.prototype.moveToAbs = function(goalAbsLine, goalColumn, addSpaceAsNeede
             // Wasteful (should just scan forwards) but simple.
             let val = parent instanceof Text ? parent.data
                 : parent.getAttribute("content-value");
-            column -= this.strWidthInContext(val.substring(0, current), parent);
+            const prefix = val.substring(0, current);
+            if (this.lineStarts[absLine]._logicalMode)
+                column -= [...prefix].length; // ??? is this right
+            else
+                column -= this.strWidthInContext(prefix, parent);
             current = parent;
             parent = current.parentNode;
         }
@@ -2457,7 +2461,7 @@ Terminal.prototype._removeCaret = function(normalize=true) {
 Terminal.prototype._removeInputFromLineTable = function() {
     let startLine = this.getAbsCursorLine();
     let seenAfter = false;
-    function removeInputLineBreaks(prevLine, lineStart, lineAttr, lineno) {
+    function removeInputLineBreaks(prevLine, lineStart, lineAttr) {
         if (lineStart.getAttribute("line"))
             return true;
         seenAfter = true;
@@ -3386,11 +3390,11 @@ Terminal.prototype._createPreNode = function() {
     // Prefer <div> over <pre> because Firefox adds extra lines when doing a Copy
     // spanning multiple <pre> nodes.
     var n = document.createElement("div");
-    n.setAttribute("class", "domterm-pre");
+    n.setAttribute("class", "domterm-block domterm-pre");
     return n;
 };
 
-Terminal.prototype._getOuterPre = function(node, className = "domterm-pre") {
+Terminal.prototype._getOuterPre = function(node, className = "domterm-block") {
     for (var v = node; v != null && v != this.topNode; v = v.parentNode) {
         if (v instanceof Element && v.classList.contains(className))
             return v;
@@ -5784,6 +5788,10 @@ Terminal.prototype.setWindowTitle = function(title, option) {
     this.updateWindowTitle();
 };
 
+/**
+ * Get window title and related information for current terminal as a structure.
+ * This runs in the inner context, but result can be used by outer context.
+ */
 Terminal.prototype.getTitleInfo = function() {
     let wtitle = this.getWindowTitle();
     const info = { };
@@ -5808,6 +5816,7 @@ Terminal.prototype.getTitleInfo = function() {
     return info;
 }
 
+// This runs in the current frame (inner context).
 Terminal.prototype.updateWindowTitle = function() {
     const info = this.getTitleInfo();
     const layout = DomTerm._layout;
@@ -6989,30 +6998,51 @@ Terminal._forceMeasureBreaks = false;
 
 Terminal.prototype._adjustLines = function(startLine, action, single=false, stopLine=null) {
     var delta = 0;
-    var prevLine = this.lineStarts[startLine];
     var skipRest = false;
-    for (var line = startLine+1;  line < this.lineStarts.length;  line++) {
-        var lineStart = this.lineStarts[line];
-        if (lineStart === stopLine)
-            skipRest = true;
-        if (delta > 0) {
-            this.lineStarts[line-delta] = lineStart;
-            this.lineEnds[line-delta-1] = this.lineEnds[line-1];
+    let blockLine = startLine;
+    for (; blockLine < this.lineStarts.length;) {
+        let block = this.lineStarts[blockLine];
+        const logicalMode = block._logicalMode;
+        let prevLine = block;
+        if (logicalMode === 2 || logicalMode === 3) {
+            const breaks = block.querySelectorAll('span[line][breaking="yes"');
+            breaks.forEach((node) => {
+                //node.parentNode.removeChild(node);
+                action(prevLine, node, node.getAttribute("line"));
+                prevLine = node;
+            });
+            console.log('logical-mode adjust');
         }
-        let lineAttr = lineStart.getAttribute("line");
-        if (skipRest || ! DtUtil.isSpanNode(lineStart) || ! lineAttr) {
-            if (single && line > startLine+1) {
-                if (delta == 0)
-                    break;
+        let line = blockLine + 1;
+        for (;  line < this.lineStarts.length;  line++) {
+            let lineStart = this.lineStarts[line];
+            if (lineStart === stopLine)
                 skipRest = true;
+            if (delta > 0) {
+                this.lineStarts[line-delta] = lineStart;
+                this.lineEnds[line-delta-1] = this.lineEnds[line-1];
             }
-            prevLine = lineStart;
-            continue;
+            let lineAttr = lineStart.getAttribute("line");
+            if (skipRest || ! DtUtil.isSpanNode(lineStart) || ! lineAttr) {
+                prevLine = lineStart;
+                //blockLine = line;
+                block = lineStart;
+                //line++;
+                break;
+            }
+            if (action(prevLine, lineStart, lineAttr)) {
+                delta++;
+            } else
+	        prevLine = lineStart;
         }
-        if (action(prevLine, lineStart, lineAttr, line-delta)) {
-            delta++;
-        } else
-	    prevLine = lineStart;
+        blockLine = line;
+        block = prevLine;
+
+        if (single && line > startLine+1) {
+            if (delta == 0)
+                break;
+            skipRest = true;
+        }
     }
     if (delta == 0)
         return false;
@@ -7028,7 +7058,7 @@ Terminal.prototype._adjustLines = function(startLine, action, single=false, stop
 Terminal.prototype._unbreakLines = function(startLine, single, stopLine, linesToRevertAfterMeasure=null) {
     // If a continuation line (following a soft line-break) is
     // _BREAKS_UNMEASURED then the entire logical line needs to be measured.
-    // To do that,it needs to be unbroken. (Could be optimized in the
+    // To do that, it needs to be unbroken. (Could be optimized in the
     // countColumns case.)  Usually not an issue as long as line-breaking
     // is deferred until we have a complete logical line.
     let measureNeeded = false;
@@ -7057,11 +7087,11 @@ Terminal.prototype._unbreakLines = function(startLine, single, stopLine, linesTo
         }
         invalidBreakSeen = false;
     };
-    let action = (prevLine, lineStart, lineAttr, lineno) => {
-        if (prevLine.getAttribute('line') == null) {
+    let action = (prevLine, lineStart, lineAttr) => {
+        if (prevLine && prevLine.getAttribute('line') == null) {
             afterLine();
         }
-        if (prevLine._breakState >= Terminal._BREAKS_VALID
+        if (prevLine && prevLine._breakState >= Terminal._BREAKS_VALID
            && ! invalidBreakSeen) {
             if (linesToRevertAfterMeasure
                 && (lineStart.getAttribute("breaking")=="yes"))
@@ -7367,6 +7397,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
     function breakLine2 (dt, line, lineStart, availWidth, countColumns) {
         // second pass - edit DOM, but don't look at offsetLeft
         let start, startOffset;
+        const logicalMode = lineStart._logicalMode;
         if (DtUtil.isBlockNode(lineStart)) {
             start = lineStart.firstChild;
             startOffset = 0;
@@ -7435,7 +7466,8 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                             el.parentNode.removeChild(lineNode);
                             break check_fits;
                         }
-                        dt._insertIntoLines(lineNode, line);
+                        if (! logicalMode)
+                            dt._insertIntoLines(lineNode, line);
                         indentWidth =
                             addIndentation(dt, lineNode, countColumns);
                         rest = el.parentNode === null && el.data === rest ? el
@@ -7451,17 +7483,20 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                             el.parentNode.insertBefore(el, dt._caretNode);
                         next = rest;
                     } else { // DtUtil.isObjectElement(el) or dt-cluster
-                        dt._insertIntoLines(lineNode, line);
+                        if (! logicalMode)
+                            dt._insertIntoLines(lineNode, line);
                         el.parentNode.insertBefore(lineNode, el);
                         lineNode.measureLeft = el.measureLeft;
                         lineNode.measureWidth = 0;
                         indentWidth = addIndentation(dt, lineNode, countColumns);
                     }
                     lineNode._widthMode = dt.lineStarts[line]._widthMode;
-                    let prevLine = dt.lineStarts[line];
-                    lineNode._breakState = prevLine._breakState;
-                    prevLine._breakState |= Terminal._BREAKS_VALID;
-                    line++;
+                    if (! logicalMode) {
+                        let prevLine = dt.lineStarts[line];
+                        lineNode._breakState = prevLine._breakState;
+                        prevLine._breakState |= Terminal._BREAKS_VALID;
+                        line++;
+                    }
                     beforeMeasure = lineNode.measureLeft;
                     if (countColumns) {
                         let beforeColumns = oldel.parentNode == null ? 0
@@ -7523,7 +7558,7 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
                     }
                     beforePos = indentWidth;
                     startOffset -= beforePos;
-                    if (lineAttr != "hard") {
+                    if (lineAttr != "hard" && ! logicalMode) {
                         dt._insertIntoLines(el, line);
                         line++;
                     }
@@ -7670,6 +7705,10 @@ Terminal.prototype._breakAllLines = function(startLine = -1) {
             break;
         if (start.classList.contains("domterm-opaque"))
             continue;
+        if (start._logicalMode === 4) {
+            start._breakState = Terminal._BREAKS_VALID;
+            continue;
+        }
         if (start._breakState >= Terminal._BREAKS_MEASURED)
             continue;
         var end = this.lineEnds[line];
@@ -8028,7 +8067,6 @@ Terminal.prototype.insertSimpleOutput = function(str, beginIndex, endIndex,
         } else {
             textNode = this.insertRawOutput(seg);
         }
-        //let prevLine = absLine;
         let lineStart = this.lineStarts[absLine];
         let column = this.getCursorColumn();
         if (!atEnd && column + cols > this.numColumns) {

@@ -5,7 +5,7 @@ div.domterm.markmode *::selection {background-color: slateblue; color: #FFF }
 /* "\21a9" is "leftwards arrow with hook".
    It is used to indicate a wrapped line, rather like a hyphen. */
 span[breaking="yes"][line="soft"]:before {content: "\21a9"; }
-span[breaking="yes"][line="soft"] { color: #CAA; }
+span[breaking="yes"][line="soft"] { color: #CAA; font-family: monospace; }
 div.domterm[dt-dark$=dark] span[breaking="yes"][line="soft"] { color: #a88; }
 
 div.domterm {

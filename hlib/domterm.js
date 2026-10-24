@@ -8,6 +8,7 @@ DomTerm._savedLogEntries = null;
 DomTerm._mainWindowNumber = -1;
 DomTerm.useDragAndDrop = true;
 DomTerm.copyForDragImage = DomTerm.useDragAndDrop;
+/** If we should wrap terminal element in extra domterm-wrapper element.*/
 DomTerm.useSeparateContentChild = function() {
     return DomTerm.copyForDragImage && ! DomTerm.useToolkitSubwindow
         && DomTerm.subwindows;

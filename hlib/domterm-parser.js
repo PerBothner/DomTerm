@@ -989,6 +989,16 @@ class DTParser {
                 case 20:
                     term.sstate.automaticNewlineMode = 0;
                     break;
+                case 76:
+                    let lineStart = term.lineStarts[term.getAbsCursorLine()];
+                    const kind = this.getParameter(1, 1);
+                    if (kind === 0) kind = undefined;
+                    lineStart._logicalMode = kind;
+                    if (kind === 4)
+                        lineStart._breakState = Terminal._BREAKS_VALID;
+                    lineStart.classList.remove("domterm-pre");
+                    lineStart.setAttribute("logical-mode", kind);
+                    break;
                 }
             }
             break;
@@ -2600,6 +2610,10 @@ class DTParser {
             // RemoteHost=USER@HOST
             // CurrentDir=DIRECTORY
             // more...
+            break;
+        case 3008: // Hierarchical Context Signalling
+            // See https://uapi-group.org/specifications/specs/osc_context/
+            // See https://contour-terminal.org/vt-extensions/osc-3008-context/
             break;
         default:
             // WTDebug.println("Saw Operating System Control #"+code+" \""+WTDebug.toQuoted(text)+"\"");
