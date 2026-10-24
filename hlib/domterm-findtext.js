@@ -2,6 +2,10 @@ export { FindText };
 import { Terminal } from './terminal.js';
 import { cmd } from './commands.js';
 
+// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+const regexp_escape = RegExp.escape ||
+    ((text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
 class FindText {
     constructor(term) {
         this.term = term;
@@ -106,8 +110,7 @@ class FindText {
         let regexp = this._regexp;
         if (! regexp) {
             if (! this.term._findRegExp) {
-                // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
-                text = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                text = regexp_escape(text);
             }
             let rmode = this.term._findMatchCase ? "gmu" : "gmui";
             try {
