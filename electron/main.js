@@ -59,7 +59,6 @@ var previousUrl = null;
 var previousWidth = 800;
 var previousHeight = 600;
 var viewMap = [];
-var viewHidden = [];
 var windowMap = [];
 var windowViews = [];
 /** Map child WebContents to pane number. */
@@ -69,13 +68,6 @@ var parentWebContents = new Map();
 /** MapBaseWindow to top-level WebContentsView. */
 var mainViews = new Map();
 const webPreferences = {contextIsolation: false, worldSafeExecuteJavaScript: false, enableRemoteModule: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js'), transparent: true };
-
-// Use BrowserWindow as opposed to BaseWindow+WebContentsView
-// FIXME if false, inconsistent scaling between main/sub-windows
-// FIXME if true lower-or-raise handler has to use visibility adjustments
-// FIXME this is particularly annoying for menus, which hide everything else.
-// FIXME if false, ready-to-show event can't be used
-var useBrowserWindow = false;
 
 function openNewWindow (url, options, headless) {
     if (! url)
@@ -87,7 +79,7 @@ function openNewWindow (url, options, headless) {
     // (used to make sure browser has read permission to user's files).
     // If so, read the file to extract the real url.
     // This avoids issues with file URLs - and might be slightly faster.
-    let m = url.match("^file://(.*/starwwt[^/]*.html)$");
+    let m = url.match("^file://(.*/start[^/]*.html)$");
     if (m) {
         fs.readFile(m[1], "utf-8", (err, data) => {
             if (! err) {
@@ -119,7 +111,7 @@ function createNewWindow (url, options, headless)
         width: w, height: h,
         webPreferences: webPreferences,
         useContentSize: true,
-        show: ! useBrowserWindow && ! headless
+        show: ! headless
     };
     if (! frame) {
         bwoptions.titleBarStyle = "hidden";
@@ -159,31 +151,21 @@ function createNewWindow (url, options, headless)
     }
     if (process.platform == "win32")
 	bwoptions.icon = __dirname.replace("\\electron", "\\domterm2.ico");
-    let win;
-    if (useBrowserWindow) {
-        win = new BrowserWindow(bwoptions);
-        win.loadURL(url);
-        if (options.openDevTools)
-            win.webContents.openDevTools()
-        if (! headless)
-            win.once('ready-to-show', function () { win.show(); });
-    } else {
-        win = new BaseWindow(bwoptions);
-        let mainView = new WebContentsView({webPreferences: webPreferences});
-        win.contentView.addChildView(mainView);
-        parentWebContents.set(mainView.webContents, win.webContents);
-        mainView.webContents.loadURL(url);
+    const win = new BaseWindow(bwoptions);
+    let mainView = new WebContentsView({webPreferences: webPreferences});
+    win.contentView.addChildView(mainView);
+    parentWebContents.set(mainView.webContents, win.webContents);
+    mainView.webContents.loadURL(url);
+    const [wwidth, wheight] = win.getContentSize();
+    mainView.setBounds({ x: 0, y: 0, width: wwidth, height: wheight });
+    //if (options.openDevTools)
+    //win.webContents.openDevTools()
+    //mainView.webContents.toggleDevTools()
+    mainViews.set(win, mainView);
+    win.on('resize', () => {
         const [w, h] = win.getContentSize();
         mainView.setBounds({ x: 0, y: 0, width: w, height: h });
-        //if (options.openDevTools)
-        //win.webContents.openDevTools()
-        //mainView.webContents.toggleDevTools()
-        mainViews.set(win, mainView);
-        win.on('resize', () => {
-            const [w, h] = win.getContentSize();
-            mainView.setBounds({ x: 0, y: 0, width: w, height: h });
-        });
-    }
+    });
     const wnum = options.windowNumber;
     windowList.push(win);
     const windowBounds = win.getBounds();
@@ -261,7 +243,6 @@ ipcMain.on('new-pane', (event, wnum, url) => {
     parentWebContents.set(childContents, parentContents);
     win.contentView.addChildView(view);
     viewMap[wnum] = view;
-    viewHidden[wnum] = undefined;
     view.webContents.loadURL(url);
     //view.webContents.toggleDevTools();
 });
@@ -275,55 +256,34 @@ ipcMain.on('close-pane', (event, wnum) => {
     parentWebContents.delete(childContents);
     paneNumbers.delete(childContents);
     viewMap[wnum] = undefined;
-    viewHidden[wnum] = undefined;
     //windowMap[wnum] = undefined;
 });
 
 ipcMain.on('focus-pane', (event, wnum) => {
     if (wnum < 0) {
-        if (useBrowserWindow)
-            event.sender.focus();
-        else
-            mainViews.get(eventToWindow(event)).webContents.focus();
+        mainViews.get(eventToWindow(event)).webContents.focus();
         return;
     }
-    viewMap[wnum].view.webContents.focus();
+    viewMap[wnum].webContents.focus();
 });
 
 ipcMain.on('show-pane', (event, wnum, visible) => {
     const view = viewMap[wnum];
     view.setVisible(visible);
-    viewHidden[wnum] = !visible;
 });
 
 ipcMain.on('lower-or-raise-panes', (event, raise, allWindows) => {
     const currentWindow = eventToWindow(event);
-    if (!useBrowserWindow) {
-        for (let i = windowList.length; --i >= 0; ) {
-            const win = windowList[i];
-            if (allWindows || win === currentWindow) {
-                const parent = win.contentView;
-                const mainView = mainViews.get(win);
-                parent.removeChildView(mainView);
-                if (raise) parent.addChildView(mainView, 0);
-                else parent.addChildView(mainView);
-            }
-        };
-    } else {
-        let win = eventToWindow(event);
-        for (let i = viewMap.length; --i >= 0; ) {
-            let vi = viewMap[i];
-            if (vi && (allWindows || windowMap[i] === currentWindow)) {
-                // Fiddling with visibilty doesn't give quite as nice
-                // a user experience as true lower/raise, but good enough.
-                // To change z-order, must removeChildVoew and then
-                // call addChildView in desired (low-to-high) order. FIXME.
-                // https://chenguangliang.com/en/posts/blog180_electron-webcontentsview/
-                if (! raise) vi.setVisible(false);
-                else if (! viewHidden[i]) vi.setVisible(true);
-            }
+    for (let i = windowList.length; --i >= 0; ) {
+        const win = windowList[i];
+        if (allWindows || win === currentWindow) {
+            const parent = win.contentView;
+            const mainView = mainViews.get(win);
+            parent.removeChildView(mainView);
+            if (raise) parent.addChildView(mainView, 0);
+            else parent.addChildView(mainView);
         }
-    }
+    };
 });
 
 ipcMain.on('adopt-pane', (event, wnum) => {
