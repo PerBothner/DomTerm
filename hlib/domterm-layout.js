@@ -765,7 +765,7 @@ DomTermLayout.initialize = function(initialContent = null) {
                                      if (DomTerm.apphooks.focusPane)
                                          DomTerm.apphooks.focusPane(newWindow);
                                      else if (newPane.contentElement.component instanceof HTMLIFrameElement)
-                                     newPane.contentElement.focus({preventScroll: true});
+                                         newPane.contentElement.focus({preventScroll: true});
                                  }
                              });
     if (lastContainer)

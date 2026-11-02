@@ -367,6 +367,17 @@ function loadHandler(event) {
             closePane: (wnum) => {
                 electronAccess.ipcRenderer.send('close-pane', wnum);
             },
+            focusPane: (wnum) => {
+                electronAccess.ipcRenderer.send('focus-pane', wnum);
+            },
+            lowerOrRaisePanes: (raise, allWindows) => {
+                electronAccess.ipcRenderer.send('lower-or-raise-panes',
+                                                raise, allWindows);
+            },
+            // setPaneZoom: xxx
+            showPane: (wnum, visible) => {
+                electronAccess.ipcRenderer.send('show-pane', wnum, visible);
+            },
             newPane: (wnum, url) => {
                 electronAccess.ipcRenderer.send('new-pane', wnum, url);
             },
