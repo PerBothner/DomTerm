@@ -158,9 +158,8 @@ function createNewWindow (url, options, headless)
     mainView.webContents.loadURL(url);
     const [wwidth, wheight] = win.getContentSize();
     mainView.setBounds({ x: 0, y: 0, width: wwidth, height: wheight });
-    //if (options.openDevTools)
-    //win.webContents.openDevTools()
-    //mainView.webContents.toggleDevTools()
+    if (options.openDevTools)
+        mainView.webContents.toggleDevTools()
     mainViews.set(win, mainView);
     win.on('resize', () => {
         const [w, h] = win.getContentSize();
@@ -220,7 +219,7 @@ ipcMain.on('window-ops', (event, command, arg) => {
         eventToWindow(event).minimize();
         break;
     case 'toggle-devtools':
-        eventToWindow(event).toggleDevTools();
+        mainViews.get(eventToWindow(event)).webContents.toggleDevTools();
         break;
     case 'fullscreen':
         win = eventToWindow(event);
